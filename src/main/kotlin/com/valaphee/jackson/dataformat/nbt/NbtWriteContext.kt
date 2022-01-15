@@ -44,18 +44,19 @@ class NbtWriteContext(
      **********************************************************
      */
 
-    fun writeValue(type: NbtType, value: Any?) = when (_type) {
-        TYPE_ROOT -> {
-            generator.output.writeByte(type.ordinal)
-            generator.output.writeUTF("")
-            true
+    fun writeValue(type: NbtType) {
+        when (_type) {
+            TYPE_ROOT -> {
+                generator.output.writeByte(type.ordinal)
+                generator.output.writeUTF("")
+            }
+            TYPE_ARRAY -> Unit
+            TYPE_OBJECT -> {
+                generator.output.writeByte(type.ordinal)
+                generator.output.writeUTF(_currentName)
+            }
+            else -> TODO(typeDesc())
         }
-        TYPE_OBJECT -> {
-            generator.output.writeByte(type.ordinal)
-            generator.output.writeUTF(_currentName)
-            true
-        }
-        else -> TODO(typeDesc())
     }
 
     fun writeEnd() {

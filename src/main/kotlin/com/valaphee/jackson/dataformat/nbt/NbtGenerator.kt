@@ -84,10 +84,57 @@ class NbtGenerator(
      **********************************************************
      */
 
-    override fun writeStartArray() {
+    override fun writeStartArray() = _reportUnsupportedOperation()
+
+    override fun writeStartArray(forValue: Any, size: Int) {
         _verifyValueWrite("start of array")
 
-        writeContext.writeValue(NbtType.List, null)
+        writeContext.writeValue(NbtType.List)
+        when (forValue) {
+            is ByteArray -> {
+                output.writeByte(NbtType.Byte.ordinal)
+                output.writeInt(forValue.size)
+            }
+            is ShortArray -> {
+                output.writeByte(NbtType.Short.ordinal)
+                output.writeInt(forValue.size)
+            }
+            is IntArray -> {
+                output.writeByte(NbtType.Int.ordinal)
+                output.writeInt(forValue.size)
+            }
+            is LongArray -> {
+                output.writeByte(NbtType.Long.ordinal)
+                output.writeInt(forValue.size)
+            }
+            is FloatArray -> {
+                output.writeByte(NbtType.Float.ordinal)
+                output.writeInt(forValue.size)
+            }
+            is DoubleArray -> {
+                output.writeByte(NbtType.Double.ordinal)
+                output.writeInt(forValue.size)
+            }
+            is List<*> -> {
+                output.writeByte(when (forValue.firstOrNull()) {
+                    is Byte -> NbtType.Byte
+                    is Short -> NbtType.Short
+                    is Int -> NbtType.Int
+                    is Long -> NbtType.Long
+                    is Float -> NbtType.Float
+                    is Double -> NbtType.Double
+                    is ByteArray -> NbtType.ByteArray
+                    is String -> NbtType.String
+                    is List<*> -> NbtType.List
+                    is Map<*, *> -> NbtType.Compound
+                    is IntArray -> NbtType.IntArray
+                    is LongArray -> NbtType.LongArray
+                    null -> NbtType.End
+                    else -> NbtType.Compound
+                }.ordinal)
+                output.writeInt(forValue.size)
+            }
+        }
 
         _writeContext = _writeContext.createChildArrayContext()
     }
@@ -103,7 +150,7 @@ class NbtGenerator(
     override fun writeStartObject() {
         _verifyValueWrite("start of object")
 
-        writeContext.writeValue(NbtType.Compound, null)
+        writeContext.writeValue(NbtType.Compound)
 
         _writeContext = _writeContext.createChildObjectContext()
     }
@@ -120,20 +167,18 @@ class NbtGenerator(
         _verifyValueWrite("write int array")
 
         val array = array.copyOfRange(offset, offset + length);
-        if (writeContext.writeValue(NbtType.IntArray, array)) {
-            output.writeInt(array.size)
-            array.forEach(output::writeInt)
-        }
+        writeContext.writeValue(NbtType.IntArray)
+        output.writeInt(array.size)
+        array.forEach(output::writeInt)
     }
 
     override fun writeArray(array: LongArray, offset: Int, length: Int) {
         _verifyValueWrite("write long array")
 
         val array = array.copyOfRange(offset, offset + length);
-        if (writeContext.writeValue(NbtType.LongArray, array)) {
-            output.writeInt(array.size)
-            array.forEach(output::writeLong)
-        }
+        writeContext.writeValue(NbtType.LongArray)
+        output.writeInt(array.size)
+        array.forEach(output::writeLong)
     }
 
     /*
@@ -145,7 +190,8 @@ class NbtGenerator(
     override fun writeString(value: String) {
         _verifyValueWrite("write string")
 
-        if (writeContext.writeValue(NbtType.String, value)) output.writeUTF(value)
+        writeContext.writeValue(NbtType.String)
+        output.writeUTF(value)
     }
 
     override fun writeString(chars: CharArray, offset: Int, length: Int) = writeString(String(chars, offset, length))
@@ -189,10 +235,9 @@ class NbtGenerator(
     override fun writeBinary(data: ByteArray) {
         _verifyValueWrite("write byte array")
 
-        if (writeContext.writeValue(NbtType.ByteArray, data)) {
-            output.writeInt(data.size)
-            output.write(data)
-        }
+        writeContext.writeValue(NbtType.ByteArray)
+        output.writeInt(data.size)
+        output.write(data)
     }
 
     /*
@@ -204,7 +249,8 @@ class NbtGenerator(
     override fun writeBoolean(value: Boolean) {
         _verifyValueWrite("write boolean")
 
-        if (writeContext.writeValue(NbtType.Byte, value)) output.writeBoolean(value)
+        writeContext.writeValue(NbtType.Byte)
+        output.writeBoolean(value)
     }
 
     override fun writeNull() = Unit
@@ -212,13 +258,15 @@ class NbtGenerator(
     override fun writeNumber(value: Int) {
         _verifyValueWrite("write int")
 
-        if (writeContext.writeValue(NbtType.Int, value)) output.writeInt(value)
+        writeContext.writeValue(NbtType.Int)
+        output.writeInt(value)
     }
 
     override fun writeNumber(value: Long) {
         _verifyValueWrite("write long")
 
-        if (writeContext.writeValue(NbtType.Long, value)) output.writeLong(value)
+        writeContext.writeValue(NbtType.Long)
+        output.writeLong(value)
     }
 
     override fun writeNumber(value: BigInteger) = _reportUnsupportedOperation()
@@ -226,13 +274,15 @@ class NbtGenerator(
     override fun writeNumber(value: Double) {
         _verifyValueWrite("write double")
 
-        if (writeContext.writeValue(NbtType.Double, value)) output.writeDouble(value)
+        writeContext.writeValue(NbtType.Double)
+        output.writeDouble(value)
     }
 
     override fun writeNumber(value: Float) {
         _verifyValueWrite("write float")
 
-        if (writeContext.writeValue(NbtType.Float, value)) output.writeFloat(value)
+        writeContext.writeValue(NbtType.Float)
+        output.writeFloat(value)
     }
 
     override fun writeNumber(value: BigDecimal) = _reportUnsupportedOperation()

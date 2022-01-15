@@ -111,34 +111,34 @@ class NbtParser(
             }
         }
 
-        return when (type.lastOrNull()) {
+        return when (val type = type.lastOrNull()) {
             NbtType.Byte -> {
-                type.removeLast()
+                this.type.removeLast()
                 currentValue = input.readByte()
                 JsonToken.VALUE_NUMBER_INT
             }
             NbtType.Short -> {
-                type.removeLast()
+                this.type.removeLast()
                 currentValue = input.readShort()
                 JsonToken.VALUE_NUMBER_INT
             }
             NbtType.Int -> {
-                type.removeLast()
+                this.type.removeLast()
                 currentValue = input.readInt()
                 JsonToken.VALUE_NUMBER_INT
             }
             NbtType.Long -> {
-                type.removeLast()
+                this.type.removeLast()
                 currentValue = input.readLong()
                 JsonToken.VALUE_NUMBER_INT
             }
             NbtType.Float -> {
-                type.removeLast()
+                this.type.removeLast()
                 currentValue = input.readFloat()
                 JsonToken.VALUE_NUMBER_FLOAT
             }
             NbtType.Double -> {
-                type.removeLast()
+                this.type.removeLast()
                 currentValue = input.readDouble()
                 JsonToken.VALUE_NUMBER_FLOAT
             }
@@ -154,7 +154,7 @@ class NbtParser(
                 JsonToken.VALUE_NUMBER_INT
             }
             NbtType.String -> {
-                type.removeLast()
+                this.type.removeLast()
                 currentValue = input.readUTF()
                 JsonToken.VALUE_STRING
             }

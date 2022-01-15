@@ -34,9 +34,8 @@ class NbtParser(
     private var codec: ObjectCodec,
     private val input: DataInput
 ) : ParserBase(context, features) {
-    private var type = mutableListOf<NbtType>()
-    private var skip = false
-    private var hold = -1
+    private var contexts = mutableListOf<Context>()
+    private var objectState = false
 
     /*
      **********************************************************
@@ -92,98 +91,88 @@ class NbtParser(
     override fun nextToken() = _nextToken().also { _currToken = it }
 
     private fun _nextToken(): JsonToken {
-        if (!skip) when (type.lastOrNull()) {
+        if (!objectState) when (contexts.lastOrNull()?.type) {
             NbtType.Compound -> {
                 val type = NbtType.values()[input.readByte().toInt()]
-                return if (type != NbtType.End) {
-                    this.type += type
-                    if (type == NbtType.Compound) skip = true
+                if (type != NbtType.End) {
+                    this.contexts += Context(type)
+                    if (type == NbtType.Compound) objectState = true
                     parsingContext.currentName = input.readUTF()
-                    JsonToken.FIELD_NAME
-                } else {
-                    this.type.removeLast()
-                    JsonToken.END_OBJECT
+                    return JsonToken.FIELD_NAME
                 }
             }
             null -> {
-                type += NbtType.values()[input.readByte().toInt()]
+                contexts += Context(NbtType.values()[input.readByte().toInt()])
                 parsingContext.currentName = input.readUTF()
             }
         }
 
-        return when (val type = type.lastOrNull()) {
+        contexts.lastOrNull()?.let {
+            if (it.arrayState == 0) {
+                contexts.removeLast()
+                return when (it.type) {
+                    NbtType.ByteArray, NbtType.List, NbtType.IntArray, NbtType.LongArray -> JsonToken.END_ARRAY
+                    NbtType.Compound -> JsonToken.END_OBJECT
+                    else -> _nextToken()
+                }
+            } else it.arrayState--
+        }
+
+        return when (val type = contexts.lastOrNull()?.type) {
             NbtType.Byte -> {
-                this.type.removeLast()
                 currentValue = input.readByte()
                 JsonToken.VALUE_NUMBER_INT
             }
             NbtType.Short -> {
-                this.type.removeLast()
                 currentValue = input.readShort()
                 JsonToken.VALUE_NUMBER_INT
             }
             NbtType.Int -> {
-                this.type.removeLast()
                 currentValue = input.readInt()
                 JsonToken.VALUE_NUMBER_INT
             }
             NbtType.Long -> {
-                this.type.removeLast()
                 currentValue = input.readLong()
                 JsonToken.VALUE_NUMBER_INT
             }
             NbtType.Float -> {
-                this.type.removeLast()
                 currentValue = input.readFloat()
                 JsonToken.VALUE_NUMBER_FLOAT
             }
             NbtType.Double -> {
-                this.type.removeLast()
                 currentValue = input.readDouble()
                 JsonToken.VALUE_NUMBER_FLOAT
             }
-            NbtType.ByteArray -> if (hold == -1) {
-                hold = input.readInt()
+            NbtType.ByteArray -> {
+                contexts += Context(NbtType.Byte, input.readInt())
                 currentValue = null
                 JsonToken.START_ARRAY
-            } else if (hold-- == 0) {
-                this.type.removeLast()
-                JsonToken.END_ARRAY
-            } else {
-                currentValue = input.readByte()
-                JsonToken.VALUE_NUMBER_INT
             }
             NbtType.String -> {
-                this.type.removeLast()
                 currentValue = input.readUTF()
                 JsonToken.VALUE_STRING
             }
+            NbtType.List -> {
+                val type = NbtType.values()[input.readByte().toInt()]
+                contexts += Context(type, input.readInt())
+                if (type == NbtType.Compound) objectState = true
+                currentValue = null
+                JsonToken.START_ARRAY
+            }
             NbtType.Compound -> {
-                skip = false
+                objectState = false
                 currentValue = null
                 JsonToken.START_OBJECT
             }
-            NbtType.IntArray -> if (hold == -1) {
-                hold = input.readInt()
+            NbtType.IntArray -> {
+                contexts += Context(NbtType.Int, input.readInt())
                 currentValue = null
                 JsonToken.START_ARRAY
-            } else if (hold-- == 0) {
-                this.type.removeLast()
-                JsonToken.END_ARRAY
-            } else {
-                currentValue = input.readInt()
-                JsonToken.VALUE_NUMBER_INT
             }
-            NbtType.LongArray -> if (hold == -1) {
-                hold = input.readInt()
+            NbtType.LongArray -> {
+                contexts += Context(NbtType.Long, input.readInt())
                 currentValue = null
                 JsonToken.START_ARRAY
-            } else if (hold-- == 0) {
-                this.type.removeLast()
-                JsonToken.END_ARRAY
-            } else {
-                currentValue = input.readLong()
-                JsonToken.VALUE_NUMBER_INT
             }
             else -> TODO("$type")
         }
@@ -198,4 +187,9 @@ class NbtParser(
     override fun _closeInput() {
         if (input is Closeable) input.close()
     }
+
+    private class Context(
+        val type: NbtType,
+        var arrayState: Int = 1
+    )
 }

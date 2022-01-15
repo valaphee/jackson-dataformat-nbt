@@ -51,16 +51,15 @@ class NbtWriteContext(
             true
         }
         TYPE_OBJECT -> {
-            println("XP" + _currentName)
             generator.output.writeByte(type.ordinal)
             generator.output.writeUTF(_currentName)
             true
         }
-        else -> TODO("$_type")
+        else -> TODO(typeDesc())
     }
 
     fun writeEnd() {
-        when (this._type) {
+        when (_type) {
             TYPE_ROOT, TYPE_OBJECT -> generator.output.writeByte(NbtType.End.ordinal)
         }
     }

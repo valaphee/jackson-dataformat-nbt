@@ -19,9 +19,12 @@ package com.valaphee.jackson.dataformat.nbt
 import com.fasterxml.jackson.core.Base64Variant
 import com.fasterxml.jackson.core.ObjectCodec
 import com.fasterxml.jackson.core.PrettyPrinter
+import com.fasterxml.jackson.core.SerializableString
 import com.fasterxml.jackson.core.Version
 import com.fasterxml.jackson.core.base.GeneratorBase
+import com.fasterxml.jackson.core.json.JsonWriteContext
 import com.fasterxml.jackson.core.json.PackageVersion
+import java.io.Closeable
 import java.io.DataOutput
 import java.io.Flushable
 import java.math.BigDecimal
@@ -67,12 +70,22 @@ class NbtGenerator(
 
     /*
      **********************************************************
-     * Output method implementations, structural
+     * Overridden methods, write methods
+     **********************************************************
+     */
+
+    override fun writeFieldName(name: String) {
+        _writeContext.writeFieldName(name)
+    }
+
+    /*
+     **********************************************************
+     * Overridden methods, structural
      **********************************************************
      */
 
     override fun writeStartArray() {
-        _verifyValueWrite("")
+        _verifyValueWrite("start of array")
 
         writeContext.writeValue(NbtType.List, null)
 
@@ -80,13 +93,15 @@ class NbtGenerator(
     }
 
     override fun writeEndArray() {
+        if (!writeContext.inArray()) _reportError("Not an array: ${writeContext.typeDesc()}");
+
         writeContext.writeEnd()
 
         _writeContext = _writeContext.parent
     }
 
     override fun writeStartObject() {
-        _verifyValueWrite("")
+        _verifyValueWrite("start of object")
 
         writeContext.writeValue(NbtType.Compound, null)
 
@@ -94,13 +109,31 @@ class NbtGenerator(
     }
 
     override fun writeEndObject() {
+        if (!writeContext.inObject()) _reportError("Not an object: ${writeContext.typeDesc()}");
+
         writeContext.writeEnd()
 
         _writeContext = _writeContext.parent
     }
 
-    override fun writeFieldName(name: String) {
-        _writeContext.writeFieldName(name)
+    override fun writeArray(array: IntArray, offset: Int, length: Int) {
+        _verifyValueWrite("write int array")
+
+        val array = array.copyOfRange(offset, offset + length);
+        if (writeContext.writeValue(NbtType.IntArray, array)) {
+            output.writeInt(array.size)
+            array.forEach(output::writeInt)
+        }
+    }
+
+    override fun writeArray(array: LongArray, offset: Int, length: Int) {
+        _verifyValueWrite("write long array")
+
+        val array = array.copyOfRange(offset, offset + length);
+        if (writeContext.writeValue(NbtType.LongArray, array)) {
+            output.writeInt(array.size)
+            array.forEach(output::writeLong)
+        }
     }
 
     /*
@@ -110,7 +143,7 @@ class NbtGenerator(
      */
 
     override fun writeString(value: String) {
-        _verifyValueWrite("")
+        _verifyValueWrite("write string")
 
         if (writeContext.writeValue(NbtType.String, value)) output.writeUTF(value)
     }
@@ -127,13 +160,21 @@ class NbtGenerator(
      **********************************************************
      */
 
-    override fun writeRaw(value: String) = writeString(value)
+    override fun writeRaw(value: String) = _reportUnsupportedOperation();
 
-    override fun writeRaw(value: String, offset: Int, length: Int) = writeString(String(value.toCharArray(), offset, length))
+    override fun writeRaw(value: String, offset: Int, length: Int) = _reportUnsupportedOperation()
 
-    override fun writeRaw(chars: CharArray, offset: Int, length: Int) = writeString(String(chars, offset, length))
+    override fun writeRaw(chars: CharArray, offset: Int, length: Int) = _reportUnsupportedOperation()
 
-    override fun writeRaw(char: Char) = throw UnsupportedOperationException()
+    override fun writeRaw(char: Char) = _reportUnsupportedOperation()
+
+    override fun writeRawValue(value: String) = _reportUnsupportedOperation()
+
+    override fun writeRawValue(value: String, offset: Int, length: Int) = _reportUnsupportedOperation()
+
+    override fun writeRawValue(chars: CharArray, offset: Int, length: Int) = _reportUnsupportedOperation()
+
+    override fun writeRawValue(value: SerializableString) = _reportUnsupportedOperation()
 
     /*
      **********************************************************
@@ -141,7 +182,18 @@ class NbtGenerator(
      **********************************************************
      */
 
-    override fun writeBinary(variant: Base64Variant, data: ByteArray, offset: Int, length: Int) = writeBinary(data.copyOfRange(offset, offset + length))
+    override fun writeBinary(variant: Base64Variant, data: ByteArray, offset: Int, length: Int) = writeBinary(data, offset, length)
+
+    override fun writeBinary(data: ByteArray, offset: Int, length: Int) = writeBinary(data.copyOfRange(offset, offset + length))
+
+    override fun writeBinary(data: ByteArray) {
+        _verifyValueWrite("write byte array")
+
+        if (writeContext.writeValue(NbtType.ByteArray, data)) {
+            output.writeInt(data.size)
+            output.write(data)
+        }
+    }
 
     /*
      **********************************************************
@@ -150,7 +202,7 @@ class NbtGenerator(
      */
 
     override fun writeBoolean(value: Boolean) {
-        _verifyValueWrite("")
+        _verifyValueWrite("write boolean")
 
         if (writeContext.writeValue(NbtType.Byte, value)) output.writeBoolean(value)
     }
@@ -158,32 +210,32 @@ class NbtGenerator(
     override fun writeNull() = Unit
 
     override fun writeNumber(value: Int) {
-        _verifyValueWrite("")
+        _verifyValueWrite("write int")
 
         if (writeContext.writeValue(NbtType.Int, value)) output.writeInt(value)
     }
 
     override fun writeNumber(value: Long) {
-        _verifyValueWrite("")
+        _verifyValueWrite("write long")
 
         if (writeContext.writeValue(NbtType.Long, value)) output.writeLong(value)
     }
 
-    override fun writeNumber(value: BigInteger) = TODO()
+    override fun writeNumber(value: BigInteger) = _reportUnsupportedOperation()
 
     override fun writeNumber(value: Double) {
-        _verifyValueWrite("")
+        _verifyValueWrite("write double")
 
         if (writeContext.writeValue(NbtType.Double, value)) output.writeDouble(value)
     }
 
     override fun writeNumber(value: Float) {
-        _verifyValueWrite("")
+        _verifyValueWrite("write float")
 
         if (writeContext.writeValue(NbtType.Float, value)) output.writeFloat(value)
     }
 
-    override fun writeNumber(value: BigDecimal) = TODO()
+    override fun writeNumber(value: BigDecimal) = _reportUnsupportedOperation()
 
     override fun writeNumber(value: String) = writeString(value)
 
@@ -197,6 +249,14 @@ class NbtGenerator(
         if (output is Flushable) output.flush()
     }
 
+    override fun close() {
+        if (isClosed) return
+
+        super.close()
+        flush()
+        if (output is Closeable) output.close()
+    }
+
     /*
      **********************************************************
      * Internal methods, buffer handling
@@ -206,6 +266,6 @@ class NbtGenerator(
     override fun _releaseBuffers() = Unit
 
     override fun _verifyValueWrite(typeMsg: String) {
-        _writeContext.writeValue()
+        if (_writeContext.writeValue() == JsonWriteContext.STATUS_EXPECT_NAME) _reportError("Can not $typeMsg, expecting field name.")
     }
 }

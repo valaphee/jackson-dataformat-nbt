@@ -16,10 +16,11 @@
 
 package com.valaphee.jackson.dataformat.nbt
 
-import com.fasterxml.jackson.core.JsonToken
 import com.fasterxml.jackson.core.ObjectCodec
+import com.fasterxml.jackson.core.Version
 import com.fasterxml.jackson.core.base.ParserBase
 import com.fasterxml.jackson.core.io.IOContext
+import com.fasterxml.jackson.core.json.PackageVersion
 import java.io.Closeable
 import java.io.DataInput
 
@@ -32,25 +33,59 @@ class NbtParser(
     private var codec: ObjectCodec,
     private val input: DataInput
 ) : ParserBase(context, features) {
+    /*
+     **********************************************************
+     * Life-cycle
+     **********************************************************
+     */
+
     override fun getCodec() = codec
 
     override fun setCodec(codec: ObjectCodec) {
         this.codec = codec
     }
 
-    override fun nextToken(): JsonToken {
-        TODO()
-    }
+    /*
+     **********************************************************
+     * Versioned
+     **********************************************************
+     */
 
-    override fun getText(): String {
-        TODO()
-    }
+    override fun version(): Version = PackageVersion.VERSION
+
+    /*
+     **********************************************************
+     * Configuration
+     **********************************************************
+     */
+
+    /*
+     **********************************************************
+     * JsonParser impl
+     **********************************************************
+     */
+
+    override fun nextToken() = TODO()
+
+    /*
+     **********************************************************
+     * Public API, access to token information, text
+     **********************************************************
+     */
+
+    override fun getText(): String = TODO()
 
     override fun getTextCharacters() = text.toCharArray()
 
     override fun getTextLength() = text.length
 
     override fun getTextOffset() = 0
+
+    /*
+     **********************************************************
+     * Low-level reading, other
+     **********************************************************
+     */
 
     override fun _closeInput() {
         if (input is Closeable) input.close()

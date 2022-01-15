@@ -18,16 +18,17 @@ package com.valaphee.jackson.dataformat.nbt
 
 import com.fasterxml.jackson.core.JsonEncoding
 import com.fasterxml.jackson.core.JsonFactory
+import com.fasterxml.jackson.core.ObjectCodec
 import com.fasterxml.jackson.core.Version
 import com.fasterxml.jackson.core.format.InputAccessor
 import com.fasterxml.jackson.core.format.MatchStrength
+import com.fasterxml.jackson.core.io.IOContext
 import com.fasterxml.jackson.core.json.PackageVersion
 import java.io.ByteArrayInputStream
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.File
 import java.io.FileInputStream
-import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.OutputStream
 import java.io.Reader
@@ -37,40 +38,117 @@ import java.net.URL
 /**
  * @author Kevin Ludwig
  */
-class NbtFactory : JsonFactory() {
-    override fun readResolve() = NbtFactory()
+class NbtFactory : JsonFactory {
+    constructor() : this(null)
+
+    constructor(codec: ObjectCodec?) : super(codec)
+
+    constructor(factory: NbtFactory, codec: ObjectCodec) : super(factory, codec)
+
+    /*
+     **********************************************************
+     * Serializable overrides
+     **********************************************************
+     */
+
+    override fun readResolve() = NbtFactory(this, _objectCodec)
+
+    /*
+     **********************************************************
+     * Versioned
+     **********************************************************
+     */
 
     override fun version(): Version = PackageVersion.VERSION
+
+    /*
+     **********************************************************
+     * Capability introspection
+     **********************************************************
+     */
+
+    override fun canUseCharArrays() = false
+
+    /*
+     **********************************************************
+     * Format detection functionality
+     **********************************************************
+     */
 
     override fun getFormatName() = "NBT"
 
     override fun hasFormat(accessor: InputAccessor) = MatchStrength.INCONCLUSIVE
 
-    override fun canUseCharArrays() = false
+    /*
+     **********************************************************
+     * Overridden parser factory methods
+     **********************************************************
+     */
 
-    override fun createParser(file: File) = NbtParser(_createContext(_createContentReference(file), true), _parserFeatures, _objectCodec, DataInputStream(FileInputStream(file)))
+    override fun createParser(file: File): NbtParser {
+        val context = _createContext(_createContentReference(file), true)
+        return _createParser(_decorate(FileInputStream(file), context), context)
+    }
 
-    override fun createParser(url: URL) = NbtParser(_createContext(_createContentReference(url), true), _parserFeatures, _objectCodec, DataInputStream(_optimizedStreamFromURL(url)))
+    override fun createParser(url: URL): NbtParser {
+        val context = _createContext(_createContentReference(url), true)
+        return _createParser(_decorate(_optimizedStreamFromURL(url), context), context)
+    }
 
-    override fun createParser(stream: InputStream) = NbtParser(_createContext(_createContentReference(stream), false), _parserFeatures, _objectCodec, DataInputStream(stream))
+    override fun createParser(stream: InputStream): NbtParser {
+        val context = _createContext(_createContentReference(stream), false)
+        return _createParser(_decorate(stream, context), context)
+    }
 
-    override fun createParser(reader: Reader) = TODO()
+    override fun createParser(bytes: ByteArray): NbtParser {
+        val context = _createContext(_createContentReference(bytes), true)
+        _inputDecorator?.let { it.decorate(context, bytes, 0, bytes.size)?.let { _createParser(it, context) } }
+        return _createParser(bytes, 0, bytes.size, context)
+    }
 
-    override fun createParser(bytes: ByteArray) = createParser(bytes, 0, bytes.size)
+    override fun createParser(bytes: ByteArray, offset: Int, length: Int): NbtParser {
+        val context = _createContext(_createContentReference(bytes, offset, length), true)
+        _inputDecorator?.let { it.decorate(context, bytes, offset, length)?.let { _createParser(it, context) } }
+        return _createParser(bytes, offset, length, context)
+    }
 
-    override fun createParser(bytes: ByteArray, offset: Int, length: Int) = NbtParser(_createContext(_createContentReference(bytes), true), _parserFeatures, _objectCodec, DataInputStream(ByteArrayInputStream(bytes, offset, length)))
+    /*
+     **********************************************************
+     * Overridden generator factory methods
+     **********************************************************
+     */
 
-    override fun createParser(content: String) = TODO()
+    override fun createGenerator(stream: OutputStream, encoding: JsonEncoding): NbtGenerator {
+        val context = _createContext(_createContentReference(stream), false)
+        return _createUTF8Generator(_decorate(stream, context), context)
+    }
 
-    override fun createParser(chars: CharArray) = TODO()
+    override fun createGenerator(stream: OutputStream): NbtGenerator {
+        val context = _createContext(_createContentReference(stream), false)
+        return _createUTF8Generator(_decorate(stream, context), context)
+    }
 
-    override fun createParser(chars: CharArray, offset: Int, length: Int) = TODO()
+    /*
+     **********************************************************
+     * Overridden internal factory methods
+     **********************************************************
+     */
 
-    override fun createGenerator(stream: OutputStream, encoding: JsonEncoding) = createGenerator(stream)
+    override fun _createParser(stream: InputStream, context: IOContext) = NbtParser(context, _parserFeatures, _objectCodec, DataInputStream(stream))
 
-    override fun createGenerator(stream: OutputStream) = NbtGenerator(_generatorFeatures, _objectCodec, DataOutputStream(stream))
+    override fun _createParser(reader: Reader, context: IOContext): NbtParser = _nonByteSource()
 
-    override fun createGenerator(writer: Writer) = TODO()
+    override fun _createParser(chars: CharArray, offset: Int, length: Int, context: IOContext, recyclable: Boolean): NbtParser = _nonByteSource()
 
-    override fun createGenerator(file: File, encoding: JsonEncoding?) = NbtGenerator(_generatorFeatures, _objectCodec, DataOutputStream(FileOutputStream(file)))
+    override fun _createParser(bytes: ByteArray, offset: Int, length: Int, context: IOContext) = NbtParser(context, _parserFeatures, _objectCodec, DataInputStream(ByteArrayInputStream(bytes, offset, length)))
+
+    override fun _createGenerator(writer: Writer, context: IOContext): NbtGenerator = _nonByteTarget()
+
+    override fun _createUTF8Generator(stream: OutputStream, context: IOContext) = NbtGenerator(_parserFeatures, _objectCodec, DataOutputStream(stream))
+
+    override fun _createWriter(stream: OutputStream, encoding: JsonEncoding, context: IOContext): Writer = _nonByteTarget();
+
+    private fun <T> _nonByteSource(): T = throw UnsupportedOperationException("Can not create parser for non-byte-based source")
+
+    private fun <T> _nonByteTarget(): T = throw UnsupportedOperationException("Can not create generator for non-byte-based target")
 }

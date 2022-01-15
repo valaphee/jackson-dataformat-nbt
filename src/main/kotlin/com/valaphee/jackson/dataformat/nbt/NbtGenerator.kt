@@ -17,9 +17,11 @@
 package com.valaphee.jackson.dataformat.nbt
 
 import com.fasterxml.jackson.core.Base64Variant
-import com.fasterxml.jackson.core.JsonStreamContext
 import com.fasterxml.jackson.core.ObjectCodec
+import com.fasterxml.jackson.core.PrettyPrinter
+import com.fasterxml.jackson.core.Version
 import com.fasterxml.jackson.core.base.GeneratorBase
+import com.fasterxml.jackson.core.json.PackageVersion
 import java.io.DataOutput
 import java.io.Flushable
 import java.math.BigDecimal
@@ -33,42 +35,70 @@ class NbtGenerator(
     codec: ObjectCodec,
     private val output: DataOutput
 ) : GeneratorBase(features, codec) {
-    private val outputContext get() = getOutputContext() as NbtWriteContext
+    /*
+     **********************************************************
+     * Versioned
+     **********************************************************
+     */
 
-    init {
-        _writeContext = NbtWriteContext(JsonStreamContext.TYPE_ROOT, null, _writeContext.dupDetector, output)
-    }
+    override fun version(): Version = PackageVersion.VERSION
 
-    override fun flush() {
-        if (output is Flushable) output.flush()
-    }
+    /*
+     **********************************************************
+     * Capability introspection
+     **********************************************************
+     */
+
+    /*
+     **********************************************************
+     * Overridden methods, configuration
+     **********************************************************
+     */
+
+    override fun useDefaultPrettyPrinter() = this
+
+    override fun setPrettyPrinter(prettyPrinter: PrettyPrinter) = this
+
+    /*
+     **********************************************************
+     * Output method implementations, structural
+     **********************************************************
+     */
 
     override fun writeStartArray() {
-        outputContext.writeEntry(NbtType.List)
+        output.writeByte(NbtType.List.ordinal)
+        if (outputContext.inRoot()) output.writeUTF("") else if (outputContext.inObject()) output.writeUTF(outputContext.currentName)
         _writeContext = _writeContext.createChildArrayContext()
     }
 
     override fun writeEndArray() {
-        outputContext.writeEnd()
         _writeContext = _writeContext.parent
     }
 
     override fun writeStartObject() {
-        outputContext.writeEntry(NbtType.Compound)
+        output.writeByte(NbtType.Compound.ordinal)
+        if (outputContext.inRoot()) output.writeUTF("") else if (outputContext.inObject()) output.writeUTF(outputContext.currentName)
         _writeContext = _writeContext.createChildObjectContext()
     }
 
     override fun writeEndObject() {
-        outputContext.writeEnd()
+        output.writeByte(NbtType.End.ordinal)
         _writeContext = _writeContext.parent
     }
 
-    override fun writeFieldName(name: String?) {
+    override fun writeFieldName(name: String) {
         _writeContext.writeFieldName(name)
     }
 
+    /*
+     **********************************************************
+     * Output method implementations, textual
+     **********************************************************
+     */
+
     override fun writeString(value: String) {
-        outputContext.writeEntry(NbtType.String)
+        output.writeByte(NbtType.String.ordinal)
+        if (outputContext.inRoot()) output.writeUTF("") else if (outputContext.inObject()) output.writeUTF(outputContext.currentName)
         output.writeUTF(value)
     }
 
@@ -78,6 +108,12 @@ class NbtGenerator(
 
     override fun writeUTF8String(bytes: ByteArray, offset: Int, length: Int) = writeString(String(bytes, offset, length))
 
+    /*
+     **********************************************************
+     * Output method implementations, unprocessed ("raw")
+     **********************************************************
+     */
+
     override fun writeRaw(value: String) = writeString(value)
 
     override fun writeRaw(value: String, offset: Int, length: Int) = writeString(String(value.toCharArray(), offset, length))
@@ -86,40 +122,73 @@ class NbtGenerator(
 
     override fun writeRaw(char: Char) = throw UnsupportedOperationException()
 
+    /*
+     **********************************************************
+     * Output method implementations, base64-encoded binary
+     **********************************************************
+     */
+
     override fun writeBinary(variant: Base64Variant, data: ByteArray, offset: Int, length: Int) = writeBinary(data.copyOfRange(offset, offset + length))
 
+    /*
+     **********************************************************
+     * Output method implementations, primitive
+     **********************************************************
+     */
+
+    override fun writeBoolean(value: Boolean) {
+        output.writeByte(NbtType.Byte.ordinal)
+        if (outputContext.inRoot()) output.writeUTF("") else if (outputContext.inObject()) output.writeUTF(outputContext.currentName)
+        output.writeBoolean(value)
+    }
+
+    override fun writeNull() = Unit
+
     override fun writeNumber(value: Int) {
-        outputContext.writeEntry(NbtType.Int)
+        output.writeByte(NbtType.Int.ordinal)
+        if (outputContext.inRoot()) output.writeUTF("") else if (outputContext.inObject()) output.writeUTF(outputContext.currentName)
         output.writeInt(value)
     }
 
     override fun writeNumber(value: Long) {
-        outputContext.writeEntry(NbtType.Long)
+        output.writeByte(NbtType.Long.ordinal)
+        if (outputContext.inRoot()) output.writeUTF("") else if (outputContext.inObject()) output.writeUTF(outputContext.currentName)
         output.writeLong(value)
     }
 
     override fun writeNumber(value: BigInteger) = TODO()
 
     override fun writeNumber(value: Double) {
-        outputContext.writeEntry(NbtType.Double)
+        output.writeByte(NbtType.Double.ordinal)
+        if (outputContext.inRoot()) output.writeUTF("") else if (outputContext.inObject()) output.writeUTF(outputContext.currentName)
         output.writeDouble(value)
     }
 
     override fun writeNumber(value: Float) {
-        outputContext.writeEntry(NbtType.Float)
+        output.writeByte(NbtType.Float.ordinal)
+        if (outputContext.inRoot()) output.writeUTF("") else if (outputContext.inObject()) output.writeUTF(outputContext.currentName)
         output.writeFloat(value)
     }
 
     override fun writeNumber(value: BigDecimal) = TODO()
 
-    override fun writeNumber(value: String) = TODO()
+    override fun writeNumber(value: String) = writeString(value)
 
-    override fun writeBoolean(value: Boolean) {
-        outputContext.writeEntry(NbtType.Byte)
-        output.writeBoolean(value)
+    /*
+     **********************************************************
+     * Low-level output handling
+     **********************************************************
+     */
+
+    override fun flush() {
+        if (output is Flushable) output.flush()
     }
 
-    override fun writeNull() = Unit
+    /*
+     **********************************************************
+     * Internal methods, buffer handling
+     **********************************************************
+     */
 
     override fun _releaseBuffers() = Unit
 

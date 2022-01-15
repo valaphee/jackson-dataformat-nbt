@@ -33,8 +33,14 @@ import java.math.BigInteger
 class NbtGenerator(
     features: Int,
     codec: ObjectCodec,
-    private val output: DataOutput
+    internal val output: DataOutput
 ) : GeneratorBase(features, codec) {
+    private val writeContext get() = _writeContext as NbtWriteContext
+
+    init {
+        _writeContext = NbtWriteContext.createRootContext(_writeContext.dupDetector, this)
+    }
+
     /*
      **********************************************************
      * Versioned
@@ -66,23 +72,30 @@ class NbtGenerator(
      */
 
     override fun writeStartArray() {
-        output.writeByte(NbtType.List.ordinal)
-        if (outputContext.inRoot()) output.writeUTF("") else if (outputContext.inObject()) output.writeUTF(outputContext.currentName)
+        _verifyValueWrite("")
+
+        writeContext.writeValue(NbtType.List, null)
+
         _writeContext = _writeContext.createChildArrayContext()
     }
 
     override fun writeEndArray() {
+        writeContext.writeEnd()
+
         _writeContext = _writeContext.parent
     }
 
     override fun writeStartObject() {
-        output.writeByte(NbtType.Compound.ordinal)
-        if (outputContext.inRoot()) output.writeUTF("") else if (outputContext.inObject()) output.writeUTF(outputContext.currentName)
+        _verifyValueWrite("")
+
+        writeContext.writeValue(NbtType.Compound, null)
+
         _writeContext = _writeContext.createChildObjectContext()
     }
 
     override fun writeEndObject() {
-        output.writeByte(NbtType.End.ordinal)
+        writeContext.writeEnd()
+
         _writeContext = _writeContext.parent
     }
 
@@ -97,9 +110,9 @@ class NbtGenerator(
      */
 
     override fun writeString(value: String) {
-        output.writeByte(NbtType.String.ordinal)
-        if (outputContext.inRoot()) output.writeUTF("") else if (outputContext.inObject()) output.writeUTF(outputContext.currentName)
-        output.writeUTF(value)
+        _verifyValueWrite("")
+
+        if (writeContext.writeValue(NbtType.String, value)) output.writeUTF(value)
     }
 
     override fun writeString(chars: CharArray, offset: Int, length: Int) = writeString(String(chars, offset, length))
@@ -137,37 +150,37 @@ class NbtGenerator(
      */
 
     override fun writeBoolean(value: Boolean) {
-        output.writeByte(NbtType.Byte.ordinal)
-        if (outputContext.inRoot()) output.writeUTF("") else if (outputContext.inObject()) output.writeUTF(outputContext.currentName)
-        output.writeBoolean(value)
+        _verifyValueWrite("")
+
+        if (writeContext.writeValue(NbtType.Byte, value)) output.writeBoolean(value)
     }
 
     override fun writeNull() = Unit
 
     override fun writeNumber(value: Int) {
-        output.writeByte(NbtType.Int.ordinal)
-        if (outputContext.inRoot()) output.writeUTF("") else if (outputContext.inObject()) output.writeUTF(outputContext.currentName)
-        output.writeInt(value)
+        _verifyValueWrite("")
+
+        if (writeContext.writeValue(NbtType.Int, value)) output.writeInt(value)
     }
 
     override fun writeNumber(value: Long) {
-        output.writeByte(NbtType.Long.ordinal)
-        if (outputContext.inRoot()) output.writeUTF("") else if (outputContext.inObject()) output.writeUTF(outputContext.currentName)
-        output.writeLong(value)
+        _verifyValueWrite("")
+
+        if (writeContext.writeValue(NbtType.Long, value)) output.writeLong(value)
     }
 
     override fun writeNumber(value: BigInteger) = TODO()
 
     override fun writeNumber(value: Double) {
-        output.writeByte(NbtType.Double.ordinal)
-        if (outputContext.inRoot()) output.writeUTF("") else if (outputContext.inObject()) output.writeUTF(outputContext.currentName)
-        output.writeDouble(value)
+        _verifyValueWrite("")
+
+        if (writeContext.writeValue(NbtType.Double, value)) output.writeDouble(value)
     }
 
     override fun writeNumber(value: Float) {
-        output.writeByte(NbtType.Float.ordinal)
-        if (outputContext.inRoot()) output.writeUTF("") else if (outputContext.inObject()) output.writeUTF(outputContext.currentName)
-        output.writeFloat(value)
+        _verifyValueWrite("")
+
+        if (writeContext.writeValue(NbtType.Float, value)) output.writeFloat(value)
     }
 
     override fun writeNumber(value: BigDecimal) = TODO()
@@ -192,5 +205,7 @@ class NbtGenerator(
 
     override fun _releaseBuffers() = Unit
 
-    override fun _verifyValueWrite(typeMsg: String) = Unit
+    override fun _verifyValueWrite(typeMsg: String) {
+        _writeContext.writeValue()
+    }
 }

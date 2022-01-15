@@ -16,6 +16,7 @@
 
 package com.valaphee.jackson.dataformat.nbt
 
+import com.fasterxml.jackson.core.JsonToken
 import com.fasterxml.jackson.core.ObjectCodec
 import com.fasterxml.jackson.core.Version
 import com.fasterxml.jackson.core.base.ParserBase
@@ -33,6 +34,9 @@ class NbtParser(
     private var codec: ObjectCodec,
     private val input: DataInput
 ) : ParserBase(context, features) {
+    private var type = mutableListOf<NbtType>()
+    private var same = false
+
     /*
      **********************************************************
      * Life-cycle
@@ -55,31 +59,114 @@ class NbtParser(
 
     /*
      **********************************************************
-     * Configuration
+     * JsonParser implementation: Text value access
      **********************************************************
      */
 
-    /*
-     **********************************************************
-     * JsonParser impl
-     **********************************************************
-     */
+    override fun getText() = when (_currToken) {
+        JsonToken.FIELD_NAME -> currentName
+        else -> currentValue?.toString()
+    }
 
-    override fun nextToken() = TODO()
+    override fun getTextCharacters() = text?.toCharArray()
 
-    /*
-     **********************************************************
-     * Public API, access to token information, text
-     **********************************************************
-     */
-
-    override fun getText(): String = TODO()
-
-    override fun getTextCharacters() = text.toCharArray()
-
-    override fun getTextLength() = text.length
+    override fun getTextLength() = text?.length ?: 0
 
     override fun getTextOffset() = 0
+
+    /*
+     **********************************************************
+     * JsonParser implementation: Numeric value access
+     **********************************************************
+     */
+
+    override fun getNumberValue() = currentValue as? Number
+
+    /*
+     **********************************************************
+     * JsonParser implementation: traversal
+     **********************************************************
+     */
+
+    override fun nextToken() = _nextToken().also { _currToken = it }
+
+    private fun _nextToken(): JsonToken {
+        if (!same) when (type.lastOrNull()) {
+            NbtType.Compound -> {
+                val type = NbtType.values()[input.readByte().toInt()]
+                return if (type != NbtType.End) {
+                    this.type += type
+                    if (type == NbtType.Compound) same = true
+                    parsingContext.currentName = input.readUTF()
+                    println("FIELD_NAME $currentName ${this.type.joinToString()}")
+                    JsonToken.FIELD_NAME
+                } else JsonToken.END_OBJECT
+            }
+            null -> {
+                type += NbtType.values()[input.readByte().toInt()]
+                parsingContext.currentName = input.readUTF()
+                println("INIT $currentName ${type.joinToString()}")
+            }
+        }
+
+        return when (type.lastOrNull()) {
+            NbtType.Byte -> {
+                type.removeLast()
+                currentValue = input.readByte()
+                println("VALUE_NUMBER_INT")
+                JsonToken.VALUE_NUMBER_INT
+            }
+            NbtType.Short -> {
+                type.removeLast()
+                currentValue = input.readShort()
+                println("VALUE_NUMBER_INT")
+                JsonToken.VALUE_NUMBER_INT
+            }
+            NbtType.Int -> {
+                type.removeLast()
+                currentValue = input.readInt()
+                println("VALUE_NUMBER_INT")
+                JsonToken.VALUE_NUMBER_INT
+            }
+            NbtType.Long -> {
+                type.removeLast()
+                currentValue = input.readLong()
+                println("VALUE_NUMBER_INT")
+                JsonToken.VALUE_NUMBER_INT
+            }
+            NbtType.Float -> {
+                type.removeLast()
+                currentValue = input.readFloat()
+                println("VALUE_NUMBER_FLOAT")
+                JsonToken.VALUE_NUMBER_FLOAT
+            }
+            NbtType.Double -> {
+                type.removeLast()
+                currentValue = input.readDouble()
+                println("VALUE_NUMBER_FLOAT")
+                JsonToken.VALUE_NUMBER_FLOAT
+            }
+            NbtType.String -> {
+                type.removeLast()
+                currentValue = input.readUTF()
+                println("VALUE_STRING")
+                JsonToken.VALUE_STRING
+            }
+            NbtType.List -> {
+                same = false
+                currentValue = null
+                println("START_ARRAY")
+                JsonToken.START_ARRAY
+            }
+            NbtType.Compound -> {
+                same = false
+                currentValue = null
+                println("START_OBJECT")
+                JsonToken.START_OBJECT
+            }
+            else -> TODO("$type")
+        }
+    }
 
     /*
      **********************************************************

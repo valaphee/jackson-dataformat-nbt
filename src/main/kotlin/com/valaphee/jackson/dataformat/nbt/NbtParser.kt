@@ -24,6 +24,8 @@ import com.fasterxml.jackson.core.io.IOContext
 import com.fasterxml.jackson.core.json.PackageVersion
 import java.io.Closeable
 import java.io.DataInput
+import java.math.BigDecimal
+import java.math.BigInteger
 
 /**
  * @author Kevin Ludwig
@@ -36,6 +38,8 @@ class NbtParser(
 ) : ParserBase(context, features) {
     private var contexts = mutableListOf<Context>()
     private var objectState = false
+
+    private var _numberFloat = 0.0f
 
     /*
      **********************************************************
@@ -65,6 +69,7 @@ class NbtParser(
 
     override fun getText() = when (_currToken) {
         JsonToken.FIELD_NAME -> currentName
+        JsonToken.VALUE_NUMBER_INT, JsonToken.VALUE_NUMBER_FLOAT -> numberValue.toString()
         else -> currentValue?.toString()
     }
 
@@ -80,7 +85,107 @@ class NbtParser(
      **********************************************************
      */
 
-    override fun getNumberValue() = currentValue as? Number
+    override fun isNaN(): Boolean {
+        return if (_currToken == JsonToken.VALUE_NUMBER_FLOAT)
+            if (_numTypesValid and NR_DOUBLE != 0) _numberDouble.isNaN() || _numberDouble.isInfinite()
+            else if (_numTypesValid and NR_FLOAT != 0) _numberFloat.isNaN() || _numberFloat.isInfinite()
+            else false
+        else false
+    }
+
+    override fun getNumberValue(): Number {
+        if (_numTypesValid == NR_UNKNOWN) _checkNumericValue(NR_UNKNOWN)
+        return if (_currToken == JsonToken.VALUE_NUMBER_INT)
+            if (_numTypesValid and NR_INT != 0) _numberInt
+            else if (_numTypesValid and NR_LONG != 0) _numberLong
+            else if (_numTypesValid and NR_BIGINT != 0) _numberBigInt
+            else _numberBigDecimal
+        else if (_numTypesValid and NR_BIGDECIMAL != 0) _numberBigDecimal
+        else if (_numTypesValid and NR_DOUBLE != 0) _numberDouble
+        else _numberFloat
+    }
+
+    override fun getNumberValueExact() = numberValue
+
+    override fun getNumberType(): NumberType {
+        if (_numTypesValid == NR_UNKNOWN) _checkNumericValue(NR_UNKNOWN)
+        return if (_currToken == JsonToken.VALUE_NUMBER_INT)
+            if (_numTypesValid and NR_INT != 0) NumberType.INT
+            else if (_numTypesValid and NR_LONG != 0) NumberType.LONG
+            else NumberType.BIG_INTEGER
+        else if (_numTypesValid and NR_BIGDECIMAL != 0) NumberType.BIG_DECIMAL
+        else if (_numTypesValid and NR_DOUBLE != 0) NumberType.DOUBLE
+        else NumberType.FLOAT
+    }
+
+    override fun getIntValue(): Int {
+        if (_numTypesValid and NR_INT == 0) {
+            if (_numTypesValid == NR_UNKNOWN) _checkNumericValue(NR_INT)
+            if (_numTypesValid and NR_INT == 0) convertNumberToInt()
+        }
+        return _numberInt
+    }
+
+    override fun getLongValue(): Long {
+        if (_numTypesValid and NR_LONG == 0) {
+            if (_numTypesValid == NR_UNKNOWN) _checkNumericValue(NR_LONG)
+            if (_numTypesValid and NR_LONG == 0) convertNumberToLong()
+        }
+        return _numberLong
+    }
+
+    override fun getBigIntegerValue(): BigInteger? {
+        if (_numTypesValid and NR_BIGINT == 0) {
+            if (_numTypesValid == NR_UNKNOWN) _checkNumericValue(NR_BIGINT)
+            if (_numTypesValid and NR_BIGINT == 0) convertNumberToBigInteger()
+        }
+        return _numberBigInt
+    }
+
+    override fun getFloatValue(): Float {
+        if (_numTypesValid and NR_FLOAT == 0) {
+            if (_numTypesValid == NR_UNKNOWN) _checkNumericValue(NR_FLOAT)
+            if (_numTypesValid and NR_FLOAT == 0) convertNumberToFloat()
+        }
+        return _numberFloat
+    }
+
+    override fun getDoubleValue(): Double {
+        if (_numTypesValid and NR_DOUBLE == 0) {
+            if (_numTypesValid == NR_UNKNOWN) _checkNumericValue(NR_DOUBLE)
+            if (_numTypesValid and NR_DOUBLE == 0) convertNumberToDouble()
+        }
+        return _numberDouble
+    }
+
+    override fun getDecimalValue(): BigDecimal? {
+        if (_numTypesValid and NR_BIGDECIMAL == 0) {
+            if (_numTypesValid == NR_UNKNOWN) _checkNumericValue(NR_BIGDECIMAL)
+            if (_numTypesValid and NR_BIGDECIMAL == 0) convertNumberToBigDecimal()
+        }
+        return _numberBigDecimal
+    }
+
+    /*
+     **********************************************************
+     * Numeric conversions
+     **********************************************************
+     */
+
+    private fun _checkNumericValue(expType: Int) {
+        if (_currToken == JsonToken.VALUE_NUMBER_INT || _currToken == JsonToken.VALUE_NUMBER_FLOAT) return
+        _reportError("Current token (${currentToken()}) not numeric, can not use numeric value accessors");
+    }
+
+    private fun convertNumberToFloat() {
+        if (_numTypesValid and NR_BIGDECIMAL != 0) _numberFloat = _numberBigDecimal.toFloat()
+        else if (_numTypesValid and NR_BIGINT != 0) _numberFloat = _numberBigInt.toFloat()
+        else if (_numTypesValid and NR_DOUBLE != 0) _numberFloat = _numberDouble.toFloat()
+        else if (_numTypesValid and NR_LONG != 0) _numberFloat = _numberLong.toFloat()
+        else if (_numTypesValid and NR_INT != 0) _numberFloat = _numberInt.toFloat()
+        else _throwInternal()
+        _numTypesValid = _numTypesValid or NR_FLOAT
+    }
 
     /*
      **********************************************************
@@ -91,6 +196,9 @@ class NbtParser(
     override fun nextToken() = _nextToken().also { _currToken = it }
 
     private fun _nextToken(): JsonToken {
+        _numTypesValid = NR_UNKNOWN;
+        currentValue = null
+
         if (!objectState) when (contexts.lastOrNull()?.type) {
             NbtType.Compound -> {
                 val type = NbtType.values()[input.readByte().toInt()]
@@ -120,32 +228,37 @@ class NbtParser(
 
         return when (val type = contexts.lastOrNull()?.type) {
             NbtType.Byte -> {
-                currentValue = input.readByte()
+                _numTypesValid = NR_INT
+                _numberInt = input.readByte().toInt()
                 JsonToken.VALUE_NUMBER_INT
             }
             NbtType.Short -> {
-                currentValue = input.readShort()
+                _numTypesValid = NR_INT
+                _numberInt = input.readShort().toInt()
                 JsonToken.VALUE_NUMBER_INT
             }
             NbtType.Int -> {
-                currentValue = input.readInt()
+                _numTypesValid = NR_INT
+                _numberInt = input.readInt()
                 JsonToken.VALUE_NUMBER_INT
             }
             NbtType.Long -> {
-                currentValue = input.readLong()
+                _numTypesValid = NR_LONG
+                _numberLong = input.readLong()
                 JsonToken.VALUE_NUMBER_INT
             }
             NbtType.Float -> {
-                currentValue = input.readFloat()
+                _numTypesValid = NR_FLOAT
+                _numberFloat = input.readFloat()
                 JsonToken.VALUE_NUMBER_FLOAT
             }
             NbtType.Double -> {
-                currentValue = input.readDouble()
+                _numTypesValid = NR_DOUBLE
+                _numberDouble = input.readDouble()
                 JsonToken.VALUE_NUMBER_FLOAT
             }
             NbtType.ByteArray -> {
                 contexts += Context(NbtType.Byte, input.readInt())
-                currentValue = null
                 JsonToken.START_ARRAY
             }
             NbtType.String -> {
@@ -156,22 +269,18 @@ class NbtParser(
                 val type = NbtType.values()[input.readByte().toInt()]
                 contexts += Context(type, input.readInt())
                 if (type == NbtType.Compound) objectState = true
-                currentValue = null
                 JsonToken.START_ARRAY
             }
             NbtType.Compound -> {
                 objectState = false
-                currentValue = null
                 JsonToken.START_OBJECT
             }
             NbtType.IntArray -> {
                 contexts += Context(NbtType.Int, input.readInt())
-                currentValue = null
                 JsonToken.START_ARRAY
             }
             NbtType.LongArray -> {
                 contexts += Context(NbtType.Long, input.readInt())
-                currentValue = null
                 JsonToken.START_ARRAY
             }
             else -> TODO("$type")

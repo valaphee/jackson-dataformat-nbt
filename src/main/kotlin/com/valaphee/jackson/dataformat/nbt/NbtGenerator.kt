@@ -255,6 +255,20 @@ class NbtGenerator(
 
     override fun writeNull() = Unit
 
+    fun writeNumber(value: Byte) {
+        _verifyValueWrite("write byte")
+
+        writeContext.writeValue(NbtType.Byte)
+        output.writeByte(value.toInt())
+    }
+
+    override fun writeNumber(value: Short) {
+        _verifyValueWrite("write short")
+
+        writeContext.writeValue(NbtType.Short)
+        output.writeShort(value.toInt())
+    }
+
     override fun writeNumber(value: Int) {
         _verifyValueWrite("write int")
 
@@ -317,5 +331,11 @@ class NbtGenerator(
 
     override fun _verifyValueWrite(typeMsg: String) {
         if (_writeContext.writeValue() == JsonWriteContext.STATUS_EXPECT_NAME) _reportError("Can not $typeMsg, expecting field name.")
+    }
+
+    companion object {
+        init {
+            ByteSerializer
+        }
     }
 }

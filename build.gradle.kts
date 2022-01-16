@@ -50,13 +50,21 @@ tasks {
     withType<Test> { useJUnitPlatform() }
 }
 
-signing { useGpgCmd() }
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
+
+signing {
+    useGpgCmd()
+    sign(publishing.publications)
+}
 
 publishing {
     publications {
         create<MavenPublication>("maven") {
             pom.apply {
-                name.set("Jackson-dataformat-NBT")
+                name.set("Jackson Dataformat: NBT")
                 description.set("Support for reading and writing NBT-encoded data via Jackson abstractions.")
                 url.set("https://valaphee.com")
                 scm {
@@ -66,7 +74,7 @@ publishing {
                 }
                 licenses {
                     license {
-                        name.set("MIT License")
+                        name.set("Apache License 2.0")
                         url.set("https://raw.githubusercontent.com/valaphee/jackson-dataformat-nbt/master/LICENSE.txt")
                     }
                 }

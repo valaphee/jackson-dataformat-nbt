@@ -37,7 +37,8 @@ class NbtParser(
     private val input: DataInput
 ) : ParserBase(context, features) {
     private var contexts = mutableListOf<Context>()
-    private var objectState = false
+     private var objectStartState = false
+    private var objectEndState = false
 
     private var _numberFloat = 0.0f
 
@@ -199,15 +200,16 @@ class NbtParser(
         _numTypesValid = NR_UNKNOWN;
         currentValue = null
 
-        if (!objectState) when (contexts.lastOrNull()?.type) {
+        // For compounds to work properly, multiple runs are needed, therefore a state is required.
+        if (!objectStartState) when (contexts.lastOrNull()?.type) {
             NbtType.Compound -> {
                 val type = NbtType.values()[input.readByte().toInt()]
                 if (type != NbtType.End) {
                     this.contexts += Context(type)
-                    if (type == NbtType.Compound) objectState = true
+                    if (type == NbtType.Compound) objectStartState = true
                     parsingContext.currentName = input.readUTF()
                     return JsonToken.FIELD_NAME
-                }
+                } else objectEndState = true
             }
             null -> {
                 contexts += Context(NbtType.values()[input.readByte().toInt()])
@@ -215,15 +217,25 @@ class NbtParser(
             }
         }
 
+        // Decrement tags, and remove when finished.
         contexts.lastOrNull()?.let {
             if (it.arrayState == 0) {
                 contexts.removeLast()
                 return when (it.type) {
                     NbtType.ByteArray, NbtType.List, NbtType.IntArray, NbtType.LongArray -> JsonToken.END_ARRAY
-                    NbtType.Compound -> JsonToken.END_OBJECT
+                    NbtType.Compound -> {
+                        objectEndState = false
+                        JsonToken.END_OBJECT
+                    }
                     else -> _nextToken()
                 }
             } else it.arrayState--
+        }
+
+        // When a list of compounds is present then a tag should not only end when there are no elements present in the list.
+        if (objectEndState) {
+            objectEndState = false
+            return JsonToken.END_OBJECT
         }
 
         return when (val type = contexts.lastOrNull()?.type) {
@@ -268,11 +280,11 @@ class NbtParser(
             NbtType.List -> {
                 val type = NbtType.values()[input.readByte().toInt()]
                 contexts += Context(type, input.readInt())
-                if (type == NbtType.Compound) objectState = true
+                if (type == NbtType.Compound) objectStartState = true
                 JsonToken.START_ARRAY
             }
             NbtType.Compound -> {
-                objectState = false
+                objectStartState = false
                 JsonToken.START_OBJECT
             }
             NbtType.IntArray -> {

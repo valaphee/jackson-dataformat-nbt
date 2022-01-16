@@ -22,11 +22,11 @@ import com.fasterxml.jackson.core.json.JsonWriteContext
 /**
  * @author Kevin Ludwig
  */
-class NbtWriteContext(
+open class NbtWriteContext(
     type: Int,
     parent: NbtWriteContext?,
     dups: DupDetector?,
-    private val generator: NbtGenerator
+    protected val _generator: NbtGenerator
 ) : JsonWriteContext(type, parent, dups) {
     /*
      **********************************************************
@@ -34,9 +34,9 @@ class NbtWriteContext(
      **********************************************************
      */
 
-    override fun createChildArrayContext() = _child?.reset(TYPE_ARRAY) as NbtWriteContext? ?: let { NbtWriteContext(TYPE_ARRAY, this, _dups?.child(), generator).also { _child = it } }
+    override fun createChildArrayContext() = _child?.reset(TYPE_ARRAY) as NbtWriteContext? ?: let { NbtWriteContext(TYPE_ARRAY, this, _dups?.child(), _generator).also { _child = it } }
 
-    override fun createChildObjectContext() = _child?.reset(TYPE_OBJECT) as NbtWriteContext? ?: let { NbtWriteContext(TYPE_OBJECT, this, _dups?.child(), generator).also { _child = it } }
+    override fun createChildObjectContext() = _child?.reset(TYPE_OBJECT) as NbtWriteContext? ?: let { NbtWriteContext(TYPE_OBJECT, this, _dups?.child(), _generator).also { _child = it } }
 
     /*
      **********************************************************
@@ -47,13 +47,13 @@ class NbtWriteContext(
     fun writeValue(type: NbtType) {
         when (_type) {
             TYPE_ROOT -> {
-                generator.output.writeByte(type.ordinal)
-                generator.output.writeUTF("")
+                _generator._output.writeByte(type.ordinal)
+                _generator._output.writeUTF("")
             }
             TYPE_ARRAY -> Unit
             TYPE_OBJECT -> {
-                generator.output.writeByte(type.ordinal)
-                generator.output.writeUTF(_currentName)
+                _generator._output.writeByte(type.ordinal)
+                _generator._output.writeUTF(_currentName)
             }
             else -> TODO(typeDesc())
         }
@@ -61,7 +61,7 @@ class NbtWriteContext(
 
     fun writeEnd() {
         when (_type) {
-            TYPE_ROOT, TYPE_OBJECT -> generator.output.writeByte(NbtType.End.ordinal)
+            TYPE_ROOT, TYPE_OBJECT -> _generator._output.writeByte(NbtType.End.ordinal)
         }
     }
 

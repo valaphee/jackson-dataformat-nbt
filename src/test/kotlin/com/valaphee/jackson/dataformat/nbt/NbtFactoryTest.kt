@@ -97,4 +97,10 @@ class NbtFactoryTest {
         val value = NestedValue("Hello", listOf(NestedValue("World", emptyList()), NestedValue("Hello2", listOf(NestedValue("World2", emptyList())))))
         assertEquals(value, objectMapper.readValue<NestedValue>(objectMapper.writeValueAsBytes(value)))
     }
+
+    @Test
+    fun bigTest() {
+        val objectMapper = ObjectMapper(NbtFactory()).apply { registerKotlinModule() }
+        objectMapper.readValue<Any>(javaClass.getResource("/bigtest.nbt")!!)
+    }
 }

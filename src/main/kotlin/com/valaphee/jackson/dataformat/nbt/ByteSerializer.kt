@@ -22,6 +22,6 @@ object ByteSerializer : NumberSerializers.Base<Any?>(Byte::class.java, JsonParse
     }
 
     override fun serialize(value: Any?, generator: JsonGenerator, provider: SerializerProvider) {
-        if (generator is NbtGenerator) generator.writeNumber(value as Byte) else generator.writeNumber((value as Byte).toShort())
+        if (generator is NbtGenerator) generator.writeNumber(value as Byte) else generator.writeNumber((value as Byte).toInt()) // See com.fasterxml.jackson.databind.ser.std.NumberSerializers.IntLikeSerializer
     }
 }

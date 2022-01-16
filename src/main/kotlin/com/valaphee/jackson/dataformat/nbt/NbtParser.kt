@@ -30,17 +30,17 @@ import java.math.BigInteger
 /**
  * @author Kevin Ludwig
  */
-class NbtParser(
+open class NbtParser(
     context: IOContext,
     features: Int,
-    private var codec: ObjectCodec,
-    private val input: DataInput
+    protected var _codec: ObjectCodec,
+    protected val _input: DataInput
 ) : ParserBase(context, features) {
-    private var contexts = mutableListOf<Context>()
-     private var objectStartState = false
-    private var objectEndState = false
+    protected var _contexts = mutableListOf<Context>()
+    protected var _objectStartState = false
+    protected var _objectEndState = false
 
-    private var _numberFloat = 0.0f
+    protected var _numberFloat = 0.0f
 
     /*
      **********************************************************
@@ -48,10 +48,10 @@ class NbtParser(
      **********************************************************
      */
 
-    override fun getCodec() = codec
+    override fun getCodec() = _codec
 
     override fun setCodec(codec: ObjectCodec) {
-        this.codec = codec
+        this._codec = codec
     }
 
     /*
@@ -201,30 +201,35 @@ class NbtParser(
         currentValue = null
 
         // For compounds to work properly, multiple runs are needed, therefore a state is required.
-        if (!objectStartState) when (contexts.lastOrNull()?.type) {
+        if (!_objectStartState) when (_contexts.lastOrNull()?.type) {
             NbtType.Compound -> {
-                val type = NbtType.values()[input.readByte().toInt()]
-                if (type != NbtType.End) {
-                    this.contexts += Context(type)
-                    if (type == NbtType.Compound) objectStartState = true
-                    parsingContext.currentName = input.readUTF()
+                val type = NbtType.values()[_input.readByte().toInt()]
+                if (type == NbtType.End) _objectEndState = true
+                else {
+                    _contexts += Context(type)
+                    if (type == NbtType.Compound) _objectStartState = true
+                    parsingContext.currentName = _input.readUTF()
                     return JsonToken.FIELD_NAME
-                } else objectEndState = true
+                }
             }
             null -> {
-                contexts += Context(NbtType.values()[input.readByte().toInt()])
-                parsingContext.currentName = input.readUTF()
+                val type = NbtType.values()[_input.readByte().toInt()]
+                if (type == NbtType.End) return JsonToken.VALUE_NULL
+                else {
+                    _contexts += Context(type)
+                    parsingContext.currentName = _input.readUTF()
+                }
             }
         }
 
         // Decrement tags, and remove when finished.
-        contexts.lastOrNull()?.let {
+        _contexts.lastOrNull()?.let {
             if (it.arrayState == 0) {
-                contexts.removeLast()
+                _contexts.removeLast()
                 return when (it.type) {
                     NbtType.ByteArray, NbtType.List, NbtType.IntArray, NbtType.LongArray -> JsonToken.END_ARRAY
                     NbtType.Compound -> {
-                        objectEndState = false
+                        _objectEndState = false
                         JsonToken.END_OBJECT
                     }
                     else -> _nextToken()
@@ -233,66 +238,66 @@ class NbtParser(
         }
 
         // When a list of compounds is present then a tag should not only end when there are no elements present in the list.
-        if (objectEndState) {
-            objectEndState = false
+        if (_objectEndState) {
+            _objectEndState = false
             return JsonToken.END_OBJECT
         }
 
-        return when (val type = contexts.lastOrNull()?.type) {
+        return when (val type = _contexts.lastOrNull()?.type) {
             NbtType.Byte -> {
                 _numTypesValid = NR_INT
-                _numberInt = input.readByte().toInt()
+                _numberInt = _input.readByte().toInt()
                 JsonToken.VALUE_NUMBER_INT
             }
             NbtType.Short -> {
                 _numTypesValid = NR_INT
-                _numberInt = input.readShort().toInt()
+                _numberInt = _input.readShort().toInt()
                 JsonToken.VALUE_NUMBER_INT
             }
             NbtType.Int -> {
                 _numTypesValid = NR_INT
-                _numberInt = input.readInt()
+                _numberInt = _input.readInt()
                 JsonToken.VALUE_NUMBER_INT
             }
             NbtType.Long -> {
                 _numTypesValid = NR_LONG
-                _numberLong = input.readLong()
+                _numberLong = _input.readLong()
                 JsonToken.VALUE_NUMBER_INT
             }
             NbtType.Float -> {
                 _numTypesValid = NR_FLOAT
-                _numberFloat = input.readFloat()
+                _numberFloat = _input.readFloat()
                 JsonToken.VALUE_NUMBER_FLOAT
             }
             NbtType.Double -> {
                 _numTypesValid = NR_DOUBLE
-                _numberDouble = input.readDouble()
+                _numberDouble = _input.readDouble()
                 JsonToken.VALUE_NUMBER_FLOAT
             }
             NbtType.ByteArray -> {
-                contexts += Context(NbtType.Byte, input.readInt())
+                _contexts += Context(NbtType.Byte, _input.readInt())
                 JsonToken.START_ARRAY
             }
             NbtType.String -> {
-                currentValue = input.readUTF()
+                currentValue = _input.readUTF()
                 JsonToken.VALUE_STRING
             }
             NbtType.List -> {
-                val type = NbtType.values()[input.readByte().toInt()]
-                contexts += Context(type, input.readInt())
-                if (type == NbtType.Compound) objectStartState = true
+                val type = NbtType.values()[_input.readByte().toInt()]
+                _contexts += Context(type, _input.readInt())
+                if (type == NbtType.Compound) _objectStartState = true
                 JsonToken.START_ARRAY
             }
             NbtType.Compound -> {
-                objectStartState = false
+                _objectStartState = false
                 JsonToken.START_OBJECT
             }
             NbtType.IntArray -> {
-                contexts += Context(NbtType.Int, input.readInt())
+                _contexts += Context(NbtType.Int, _input.readInt())
                 JsonToken.START_ARRAY
             }
             NbtType.LongArray -> {
-                contexts += Context(NbtType.Long, input.readInt())
+                _contexts += Context(NbtType.Long, _input.readInt())
                 JsonToken.START_ARRAY
             }
             else -> TODO("$type")
@@ -306,10 +311,10 @@ class NbtParser(
      */
 
     override fun _closeInput() {
-        if (input is Closeable) input.close()
+        if (_input is Closeable) _input.close()
     }
 
-    private class Context(
+    protected class Context(
         val type: NbtType,
         var arrayState: Int = 1
     )

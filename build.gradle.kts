@@ -23,10 +23,7 @@ plugins {
     signing
 }
 
-repositories {
-    mavenCentral()
-    mavenLocal()
-}
+repositories { mavenCentral() }
 
 group = "com.valaphee"
 val versionDetails: groovy.lang.Closure<com.palantir.gradle.gitversion.VersionDetails> by extra

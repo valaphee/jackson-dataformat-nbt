@@ -109,7 +109,7 @@ class NbtFactoryTest {
     }
 
     @Test
-    fun exploit() {
+    fun `exploit test`() {
         val objectMapper = ObjectMapper(NbtFactory()).apply { registerKotlinModule() }
 
         // 1. Run

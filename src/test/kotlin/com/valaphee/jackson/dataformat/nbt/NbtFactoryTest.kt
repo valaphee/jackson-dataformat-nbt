@@ -31,7 +31,7 @@ import kotlin.system.measureTimeMillis
  */
 class NbtFactoryTest {
     @Test
-    fun basicSelf() {
+    fun `self-test with basic structure`() {
         data class BasicValue(
             val byte: Byte,
             val short: Short,
@@ -91,7 +91,7 @@ class NbtFactoryTest {
     }
 
     @Test
-    fun nestedSelf() {
+    fun `self-test with nested structure`() {
         data class NestedValue(
             val value: String,
             val children: List<NestedValue>
@@ -103,7 +103,7 @@ class NbtFactoryTest {
     }
 
     @Test
-    fun bigTest() {
+    fun `big test`() {
         val objectMapper = ObjectMapper(NbtFactory()).apply { registerKotlinModule() }
         objectMapper.readValue<Any>(javaClass.getResource("/bigtest.nbt")!!)
     }

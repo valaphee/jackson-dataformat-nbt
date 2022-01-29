@@ -31,7 +31,7 @@ val details = versionDetails()
 version = "${details.lastTag}.${details.commitDistance}"
 
 dependencies {
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.13.1")
+    api("com.fasterxml.jackson.core:jackson-databind:2.13.1")
     testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.13.1")
     testImplementation("org.junit.jupiter:junit-jupiter:5.8.2")
 }

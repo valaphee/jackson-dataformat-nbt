@@ -23,12 +23,12 @@ plugins {
     signing
 }
 
-repositories { mavenCentral() }
-
 group = "com.valaphee"
 val versionDetails: groovy.lang.Closure<com.palantir.gradle.gitversion.VersionDetails> by extra
 val details = versionDetails()
 version = "${details.lastTag}.${details.commitDistance}"
+
+repositories { mavenCentral() }
 
 dependencies {
     api("com.fasterxml.jackson.core:jackson-databind:2.13.1")

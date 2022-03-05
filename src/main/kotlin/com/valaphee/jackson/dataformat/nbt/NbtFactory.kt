@@ -25,12 +25,14 @@ import com.fasterxml.jackson.core.format.InputAccessor
 import com.fasterxml.jackson.core.format.MatchStrength
 import com.fasterxml.jackson.core.io.IOContext
 import com.fasterxml.jackson.core.json.PackageVersion
-import com.valaphee.jackson.dataformat.nbt.io.LittleEndianDataInputStream
-import com.valaphee.jackson.dataformat.nbt.io.LittleEndianDataOuputStream
-import com.valaphee.jackson.dataformat.nbt.io.LittleEndianVarIntDataInputStream
-import com.valaphee.jackson.dataformat.nbt.io.LittleEndianVarIntDataOutputStream
+import com.valaphee.jackson.dataformat.nbt.io.LittleEndianDataInput
+import com.valaphee.jackson.dataformat.nbt.io.LittleEndianDataOutput
+import com.valaphee.jackson.dataformat.nbt.io.LittleEndianVarIntDataInput
+import com.valaphee.jackson.dataformat.nbt.io.LittleEndianVarIntDataOutput
 import java.io.ByteArrayInputStream
+import java.io.DataInput
 import java.io.DataInputStream
+import java.io.DataOutput
 import java.io.DataOutputStream
 import java.io.File
 import java.io.FileInputStream
@@ -180,7 +182,7 @@ open class NbtFactory : JsonFactory {
      **********************************************************
      */
 
-    override fun _createParser(stream: InputStream, context: IOContext) = NbtParser(context, _parserFeatures, _objectCodec, if (Feature.LittleEndian.enabledIn(_formatFeatures)) if (Feature.VarInt.enabledIn(_formatFeatures)) LittleEndianVarIntDataInputStream(stream) else LittleEndianDataInputStream(stream) else DataInputStream(stream))
+    override fun _createParser(stream: InputStream, context: IOContext) = NbtParser(context, _parserFeatures, _objectCodec, createDataInput(stream))
 
     override fun _createParser(reader: Reader, context: IOContext): NbtParser = _nonByteSource()
 
@@ -190,11 +192,32 @@ open class NbtFactory : JsonFactory {
 
     override fun _createGenerator(writer: Writer, context: IOContext): NbtGenerator = _nonByteTarget()
 
-    override fun _createUTF8Generator(stream: OutputStream, context: IOContext) = NbtGenerator(_generatorFeatures, _objectCodec, if (Feature.LittleEndian.enabledIn(_formatFeatures)) if (Feature.VarInt.enabledIn(_formatFeatures)) LittleEndianVarIntDataOutputStream(stream) else LittleEndianDataOuputStream(stream) else DataOutputStream(stream))
+    override fun _createUTF8Generator(stream: OutputStream, context: IOContext) = NbtGenerator(_generatorFeatures, _objectCodec, createDataOutput(stream))
 
     override fun _createWriter(stream: OutputStream, encoding: JsonEncoding, context: IOContext): Writer = _nonByteTarget();
 
     private fun <T> _nonByteSource(): T = throw UnsupportedOperationException("Can not create parser for non-byte-based source.")
 
     private fun <T> _nonByteTarget(): T = throw UnsupportedOperationException("Can not create generator for non-byte-based target.")
+
+
+    private fun createDataInput(stream: InputStream): DataInput {
+        val stream = if (stream is DataInput) stream else DataInputStream(stream)
+        return if (Feature.LittleEndian.enabledIn(_formatFeatures))
+            if (Feature.VarInt.enabledIn(_formatFeatures)) LittleEndianVarIntDataInput(stream)
+            else LittleEndianDataInput(stream)
+        else
+            if (Feature.VarInt.enabledIn(_formatFeatures)) throw UnsupportedOperationException("")
+            else stream
+    }
+
+    private fun createDataOutput(stream: OutputStream): DataOutput {
+        val stream = if (stream is DataOutput) stream else DataOutputStream(stream)
+        return if (Feature.LittleEndian.enabledIn(_formatFeatures))
+            if (Feature.VarInt.enabledIn(_formatFeatures)) LittleEndianVarIntDataOutput(stream)
+            else LittleEndianDataOutput(stream)
+        else
+            if (Feature.VarInt.enabledIn(_formatFeatures)) throw UnsupportedOperationException("")
+            else stream
+    }
 }

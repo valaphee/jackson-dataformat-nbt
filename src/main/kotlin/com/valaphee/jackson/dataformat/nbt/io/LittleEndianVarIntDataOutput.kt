@@ -16,18 +16,15 @@
 
 package com.valaphee.jackson.dataformat.nbt.io
 
-import java.io.DataOutputStream
-import java.io.OutputStream
+import java.io.DataOutput
 import java.nio.charset.StandardCharsets
 
 /**
  * @author Kevin Ludwig
  */
-class LittleEndianVarIntDataOutputStream : LittleEndianDataOuputStream {
-    constructor(stream: DataOutputStream) : super(stream)
-
-    constructor(stream: OutputStream) : super(stream)
-
+class LittleEndianVarIntDataOutput(
+    stream: DataOutput
+) : LittleEndianDataOutput(stream) {
     override fun writeInt(value: Int) {
         writeVarUInt((value shl 1) xor (value shr 31))
     }

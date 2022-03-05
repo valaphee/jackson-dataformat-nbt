@@ -16,18 +16,15 @@
 
 package com.valaphee.jackson.dataformat.nbt.io
 
-import java.io.DataInputStream
-import java.io.InputStream
+import java.io.DataInput
 import java.nio.charset.StandardCharsets
 
 /**
  * @author Kevin Ludwig
  */
-class LittleEndianVarIntDataInputStream: LittleEndianDataInputStream {
-    constructor(stream: DataInputStream) : super(stream)
-
-    constructor(stream: InputStream) : super(stream)
-
+class LittleEndianVarIntDataInput(
+    stream: DataInput
+) : LittleEndianDataInput(stream) {
     override fun readInt(): Int {
         val value = readVarUInt()
         return (value ushr 1) xor -(value and 1)

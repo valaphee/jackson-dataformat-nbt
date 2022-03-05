@@ -16,20 +16,14 @@
 
 package com.valaphee.jackson.dataformat.nbt.io
 
-import java.io.Closeable
 import java.io.DataInput
-import java.io.DataInputStream
-import java.io.InputStream
-import java.nio.charset.StandardCharsets
 
 /**
  * @author Kevin Ludwig
  */
-open class LittleEndianDataInputStream constructor(
-    private val stream: DataInputStream,
-) : DataInput by stream, Closeable by stream {
-    constructor(stream: InputStream) : this(DataInputStream(stream))
-
+open class LittleEndianDataInput constructor(
+    private val stream: DataInput,
+) : DataInput by stream {
     override fun readShort() = java.lang.Short.reverseBytes(stream.readShort())
 
     override fun readUnsignedShort() = java.lang.Short.toUnsignedInt(java.lang.Short.reverseBytes(stream.readShort()))
@@ -43,10 +37,4 @@ open class LittleEndianDataInputStream constructor(
     override fun readFloat() = java.lang.Float.intBitsToFloat(Integer.reverseBytes(stream.readInt()))
 
     override fun readDouble() = java.lang.Double.longBitsToDouble(java.lang.Long.reverseBytes(stream.readLong()))
-
-    override fun readUTF(): String {
-        val bytes = ByteArray(readUnsignedShort())
-        readFully(bytes)
-        return String(bytes, StandardCharsets.UTF_8)
-    }
 }

@@ -17,6 +17,7 @@
 package com.valaphee.jackson.dataformat.nbt.io
 
 import java.io.DataInput
+import java.nio.charset.StandardCharsets
 
 /**
  * @author Kevin Ludwig
@@ -37,4 +38,10 @@ open class LittleEndianDataInput constructor(
     override fun readFloat() = java.lang.Float.intBitsToFloat(Integer.reverseBytes(stream.readInt()))
 
     override fun readDouble() = java.lang.Double.longBitsToDouble(java.lang.Long.reverseBytes(stream.readLong()))
+
+    override fun readUTF(): String {
+        val bytes = ByteArray(readUnsignedShort())
+        readFully(bytes)
+        return String(bytes, StandardCharsets.UTF_8)
+    }
 }

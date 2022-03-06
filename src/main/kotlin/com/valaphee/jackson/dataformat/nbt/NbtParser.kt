@@ -175,7 +175,7 @@ open class NbtParser(
 
     private fun _checkNumericValue(expType: Int) {
         if (_currToken == JsonToken.VALUE_NUMBER_INT || _currToken == JsonToken.VALUE_NUMBER_FLOAT) return
-        _reportError("Current token (${currentToken()}) not numeric, can not use numeric value accessors");
+        _reportError("Current token (${currentToken()}) not numeric, can not use numeric value accessors")
     }
 
     private fun convertNumberToFloat() {
@@ -197,7 +197,7 @@ open class NbtParser(
     override fun nextToken() = _nextToken().also { _currToken = it }
 
     private fun _nextToken(): JsonToken {
-        _numTypesValid = NR_UNKNOWN;
+        _numTypesValid = NR_UNKNOWN
         currentValue = null
 
         // For compounds to work properly, multiple runs are needed, therefore a state is required.
@@ -220,6 +220,7 @@ open class NbtParser(
                     parsingContext.currentName = _input.readUTF()
                 }
             }
+            else -> Unit
         }
 
         // Decrement tags, and remove when finished.
@@ -247,7 +248,11 @@ open class NbtParser(
             NbtType.Byte -> {
                 _numTypesValid = NR_INT
                 _numberInt = _input.readByte().toInt()
-                JsonToken.VALUE_NUMBER_INT
+                when (_numberInt) {
+                    0 -> JsonToken.VALUE_FALSE
+                    1 -> JsonToken.VALUE_TRUE
+                    else -> JsonToken.VALUE_NUMBER_INT
+                }
             }
             NbtType.Short -> {
                 _numTypesValid = NR_INT
@@ -283,9 +288,9 @@ open class NbtParser(
                 JsonToken.VALUE_STRING
             }
             NbtType.List -> {
-                val type = NbtType.values()[_input.readByte().toInt()]
-                _contexts += Context(type, _input.readInt())
-                if (type == NbtType.Compound) _objectStartState = true
+                val listType = NbtType.values()[_input.readByte().toInt()]
+                _contexts += Context(listType, _input.readInt())
+                if (listType == NbtType.Compound) _objectStartState = true
                 JsonToken.START_ARRAY
             }
             NbtType.Compound -> {

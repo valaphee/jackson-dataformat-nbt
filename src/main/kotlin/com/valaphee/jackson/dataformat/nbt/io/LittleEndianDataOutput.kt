@@ -17,6 +17,7 @@
 package com.valaphee.jackson.dataformat.nbt.io
 
 import java.io.DataOutput
+import java.nio.charset.StandardCharsets
 
 /**
  * @author Kevin Ludwig
@@ -35,4 +36,10 @@ open class LittleEndianDataOutput(
     override fun writeFloat(value: Float) = stream.writeInt(Integer.reverseBytes(java.lang.Float.floatToIntBits(value)))
 
     override fun writeDouble(value: Double) = stream.writeLong(java.lang.Long.reverseBytes(java.lang.Double.doubleToLongBits(value)))
+
+    override fun writeUTF(value: String) {
+        val bytes = value.toByteArray(StandardCharsets.UTF_8)
+        writeShort(bytes.size)
+        write(bytes)
+    }
 }

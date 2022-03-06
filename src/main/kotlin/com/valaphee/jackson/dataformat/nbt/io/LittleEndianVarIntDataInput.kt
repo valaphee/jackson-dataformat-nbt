@@ -39,7 +39,7 @@ class LittleEndianVarIntDataInput(
             if (head and 0x80 == 0) return (value ushr 1) xor -(value and 1)
             shift += 7
         }
-        throw ArithmeticException("VarLong wider than 70-bit")
+        throw ArithmeticException("VarLong wider than 70-bit.")
     }
 
     override fun readUTF(): String {
@@ -57,6 +57,6 @@ class LittleEndianVarIntDataInput(
             if (head and 0x80 == 0) return value
             shift += 7
         }
-        throw ArithmeticException("VarInt wider than 35-bit")
+        throw ArithmeticException("VarInt wider than 35-bit.")
     }
 }

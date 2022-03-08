@@ -200,7 +200,6 @@ open class NbtFactory : JsonFactory {
 
     private fun <T> _nonByteTarget(): T = throw UnsupportedOperationException("Can not create generator for non-byte-based target.")
 
-
     private fun createDataInput(stream: InputStream): DataInput {
         val stream = if (stream is DataInput) stream else DataInputStream(stream)
         return if (Feature.LittleEndian.enabledIn(_formatFeatures))

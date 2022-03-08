@@ -91,6 +91,10 @@ open class NbtGenerator(
 
         _nbtWriteContext.writeValue(NbtType.List)
         when (forValue) {
+            is BooleanArray -> {
+                _output.writeByte(NbtType.Byte.ordinal)
+                _output.writeInt(forValue.size)
+            }
             is ByteArray -> {
                 _output.writeByte(NbtType.Byte.ordinal)
                 _output.writeInt(forValue.size)
@@ -117,6 +121,7 @@ open class NbtGenerator(
             }
             is List<*> -> {
                 _output.writeByte(when (forValue.firstOrNull()) {
+                    is Boolean -> NbtType.Byte
                     is Byte -> NbtType.Byte
                     is Short -> NbtType.Short
                     is Int -> NbtType.Int

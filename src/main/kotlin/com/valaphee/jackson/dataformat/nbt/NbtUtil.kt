@@ -16,31 +16,32 @@
 
 package com.valaphee.jackson.dataformat.nbt
 
-fun Map<*, *>.getByteOrNull(key: String) = get(key)?.let { if (it is Boolean) if (it) 1 else 0 else it as? Number }
+fun Map<String, Any?>.getByteOrNull(key: String) = get(key)?.let { if (it is Boolean) if (it) 1 else 0 else it as? Number }
 
-fun Map<*, *>.getBooleanOrNull(key: String) = get(key) as? Boolean
+fun Map<String, Any?>.getBooleanOrNull(key: String) = get(key) as? Boolean
 
-fun Map<*, *>.getShortOrNull(key: String) = (get(key) as? Number)?.toShort()
+fun Map<String, Any?>.getShortOrNull(key: String) = (get(key) as? Number)?.toShort()
 
-fun Map<*, *>.getIntOrNull(key: String) = (get(key) as? Number)?.toInt()
+fun Map<String, Any?>.getIntOrNull(key: String) = (get(key) as? Number)?.toInt()
 
-fun Map<*, *>.getLongOrNull(key: String) = (get(key) as? Number)?.toLong()
+fun Map<String, Any?>.getLongOrNull(key: String) = (get(key) as? Number)?.toLong()
 
-fun Map<*, *>.getFloatOrNull(key: String) = (get(key) as? Number)?.toFloat()
+fun Map<String, Any?>.getFloatOrNull(key: String) = (get(key) as? Number)?.toFloat()
 
-fun Map<*, *>.getDoubleOrNull(key: String) = (get(key) as? Number)?.toDouble()
-
-@Suppress("UNCHECKED_CAST")
-fun Map<*, *>.getByteArrayOrNull(key: String) = (get(key) as? List<Byte>)?.toByteArray()
-
-fun Map<*, *>.getStringOrNull(key: String) = get(key) as? String
-
-fun Map<*, *>.getListOrNull(key: String) = get(key) as? List<*>
-
-fun Map<*, *>.getMapOrNull(key: String) = get(key) as? Map<*, *>
+fun Map<String, Any?>.getDoubleOrNull(key: String) = (get(key) as? Number)?.toDouble()
 
 @Suppress("UNCHECKED_CAST")
-fun Map<*, *>.getIntArrayOrNull(key: String) = (get(key) as? List<Int>)?.toIntArray()
+fun Map<String, Any?>.getByteArrayOrNull(key: String) = (get(key) as? List<Byte>)?.toByteArray()
+
+fun Map<String, Any?>.getStringOrNull(key: String) = get(key) as? String
+
+fun Map<String, Any?>.getListOrNull(key: String) = get(key) as? List<Any?>
 
 @Suppress("UNCHECKED_CAST")
-fun Map<*, *>.getLongArrayOrNull(key: String) = (get(key) as? List<Long>)?.toLongArray()
+fun Map<String, Any?>.getMapOrNull(key: String) = get(key) as? Map<String, Any?>
+
+@Suppress("UNCHECKED_CAST")
+fun Map<String, Any?>.getIntArrayOrNull(key: String) = (get(key) as? List<Int>)?.toIntArray()
+
+@Suppress("UNCHECKED_CAST")
+fun Map<String, Any?>.getLongArrayOrNull(key: String) = (get(key) as? List<Long>)?.toLongArray()

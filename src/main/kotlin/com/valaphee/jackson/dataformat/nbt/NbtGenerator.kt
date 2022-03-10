@@ -46,7 +46,7 @@ open class NbtGenerator(
 
     /*
      **********************************************************
-     * Versioned
+     * Construction, initialization
      **********************************************************
      */
 
@@ -54,33 +54,17 @@ open class NbtGenerator(
 
     /*
      **********************************************************
-     * Capability introspection
+     * Public API, other configuration
      **********************************************************
      */
-
-    /*
-     **********************************************************
-     * Overridden methods, configuration
-     **********************************************************
-     */
-
-    override fun useDefaultPrettyPrinter() = this
 
     override fun setPrettyPrinter(prettyPrinter: PrettyPrinter) = this
 
-    /*
-     **********************************************************
-     * Overridden methods, write methods
-     **********************************************************
-     */
-
-    override fun writeFieldName(name: String) {
-        _writeContext.writeFieldName(name)
-    }
+    override fun useDefaultPrettyPrinter() = this
 
     /*
      **********************************************************
-     * Overridden methods, structural
+     * Public API, write methods, structural
      **********************************************************
      */
 
@@ -90,6 +74,8 @@ open class NbtGenerator(
         _verifyValueWrite("start of array")
 
         _nbtWriteContext.writeValue(NbtType.List)
+        _writeContext = _writeContext.createChildArrayContext()
+
         when (forValue) {
             is BooleanArray -> {
                 _output.writeByte(NbtType.Byte.ordinal)
@@ -120,7 +106,7 @@ open class NbtGenerator(
                 _output.writeInt(forValue.size)
             }
             is List<*> -> {
-                _output.writeByte(when (forValue.firstOrNull()) {
+                val type = when (forValue.firstOrNull()) {
                     is Boolean -> NbtType.Byte
                     is Byte -> NbtType.Byte
                     is Short -> NbtType.Short
@@ -136,12 +122,14 @@ open class NbtGenerator(
                     is LongArray -> NbtType.LongArray
                     null -> NbtType.End
                     else -> NbtType.Compound
-                }.ordinal)
+                }
+                _nbtWriteContext.nbtType = type
+
+                _output.writeByte(type.ordinal)
                 _output.writeInt(forValue.size)
             }
         }
 
-        _writeContext = _writeContext.createChildArrayContext()
     }
 
     override fun writeEndArray() {
@@ -168,6 +156,16 @@ open class NbtGenerator(
         _writeContext = _writeContext.parent
     }
 
+    override fun writeFieldName(name: String) {
+        _writeContext.writeFieldName(name)
+    }
+
+    /*
+     **********************************************************
+     * Public API, write methods, scalar arrays (2.8)
+     **********************************************************
+     */
+
     override fun writeArray(array: IntArray, offset: Int, length: Int) {
         _verifyValueWrite("write int array")
 
@@ -188,7 +186,7 @@ open class NbtGenerator(
 
     /*
      **********************************************************
-     * Output method implementations, textual
+     * Public API, write methods, text/String values
      **********************************************************
      */
 
@@ -207,7 +205,7 @@ open class NbtGenerator(
 
     /*
      **********************************************************
-     * Output method implementations, unprocessed ("raw")
+     * Public API, write methods, binary/raw content
      **********************************************************
      */
 
@@ -227,42 +225,23 @@ open class NbtGenerator(
 
     override fun writeRawValue(value: SerializableString) = _reportUnsupportedOperation()
 
-    /*
-     **********************************************************
-     * Output method implementations, base64-encoded binary
-     **********************************************************
-     */
-
     override fun writeBinary(variant: Base64Variant, data: ByteArray, offset: Int, length: Int) = writeBinary(data, offset, length)
 
-    override fun writeBinary(data: ByteArray, offset: Int, length: Int) = writeBinary(data.copyOfRange(offset, offset + length))
-
-    override fun writeBinary(data: ByteArray) {
+    override fun writeBinary(data: ByteArray, offset: Int, length: Int) {
         _verifyValueWrite("write byte array")
 
         _nbtWriteContext.writeValue(NbtType.ByteArray)
-        _output.writeInt(data.size)
-        _output.write(data)
+        _output.writeInt(length)
+        _output.write(data, offset, length)
     }
+
+    override fun writeBinary(data: ByteArray) = writeBinary(data, 0, data.size)
 
     /*
      **********************************************************
-     * Output method implementations, primitive
+     * Public API, write methods, numeric
      **********************************************************
      */
-
-    override fun writeBoolean(value: Boolean) {
-        _verifyValueWrite("write boolean")
-
-        _nbtWriteContext.writeValue(NbtType.Byte)
-        _output.writeBoolean(value)
-    }
-
-    override fun writeNull() {
-        _verifyValueWrite("write null")
-
-        if (_nbtWriteContext.inRoot()) _output.writeByte(NbtType.End.ordinal)
-    }
 
     fun writeNumber(value: Byte) {
         _verifyValueWrite("write byte")
@@ -314,13 +293,38 @@ open class NbtGenerator(
 
     /*
      **********************************************************
-     * Low-level output handling
+     * Public API, write methods, other value types
+     **********************************************************
+     */
+
+    override fun writeBoolean(value: Boolean) {
+        _verifyValueWrite("write boolean")
+
+        _nbtWriteContext.writeValue(NbtType.Byte)
+        _output.writeBoolean(value)
+    }
+
+    override fun writeNull() {
+        _verifyValueWrite("write null")
+
+        if (_nbtWriteContext.inRoot()) _output.writeByte(NbtType.End.ordinal)
+    }
+
+    /*
+     **********************************************************
+     * Public API, buffer handling
      **********************************************************
      */
 
     override fun flush() {
         if (_output is Flushable) _output.flush()
     }
+
+    /*
+     **********************************************************
+     * Closeable implementation
+     **********************************************************
+     */
 
     override fun close() {
         if (isClosed) return
@@ -332,7 +336,7 @@ open class NbtGenerator(
 
     /*
      **********************************************************
-     * Internal methods, buffer handling
+     * Package methods for this, sub-classes
      **********************************************************
      */
 

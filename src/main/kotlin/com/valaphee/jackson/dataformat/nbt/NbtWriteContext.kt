@@ -28,6 +28,8 @@ open class NbtWriteContext(
     dups: DupDetector?,
     protected val _generator: NbtGenerator
 ) : JsonWriteContext(type, parent, dups) {
+    lateinit var nbtType: NbtType
+
     /*
      **********************************************************
      * Factory methods
@@ -38,21 +40,15 @@ open class NbtWriteContext(
 
     override fun createChildObjectContext() = _child?.reset(TYPE_OBJECT) as NbtWriteContext? ?: let { NbtWriteContext(TYPE_OBJECT, this, _dups?.child(), _generator).also { _child = it } }
 
-    /*
-     **********************************************************
-     * Write methods
-     **********************************************************
-     */
-
-    fun writeValue(type: NbtType) {
+    fun writeValue(nbtType: NbtType) {
         when (_type) {
             TYPE_ROOT -> {
-                _generator._output.writeByte(type.ordinal)
+                _generator._output.writeByte(nbtType.ordinal)
                 _generator._output.writeUTF("")
             }
-            TYPE_ARRAY -> Unit
+            TYPE_ARRAY -> check(this.nbtType == nbtType)
             TYPE_OBJECT -> {
-                _generator._output.writeByte(type.ordinal)
+                _generator._output.writeByte(nbtType.ordinal)
                 _generator._output.writeUTF(_currentName)
             }
             else -> TODO(typeDesc())

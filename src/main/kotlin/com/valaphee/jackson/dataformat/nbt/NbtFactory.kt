@@ -46,8 +46,6 @@ import java.net.URL
  * @author Kevin Ludwig
  */
 open class NbtFactory : JsonFactory {
-    protected var _formatFeatures = 0
-
     enum class Feature(
         protected val _defaultState: Boolean,
     ) : FormatFeature {
@@ -62,6 +60,19 @@ open class NbtFactory : JsonFactory {
 
         override fun enabledIn(flags: Int) = (flags and mask) != 0
     }
+
+    /*
+     **********************************************************
+     * Configuration, simple feature flags
+     **********************************************************
+     */
+    protected var _formatFeatures = 0
+
+    /*
+     **********************************************************
+     * Construction
+     **********************************************************
+     */
 
     constructor() : this(null)
 
@@ -81,11 +92,15 @@ open class NbtFactory : JsonFactory {
 
     /*
      **********************************************************
-     * Versioned
+     * Capability introspection
      **********************************************************
      */
 
-    override fun version(): Version = PackageVersion.VERSION
+    override fun canUseCharArrays() = false
+
+    override fun getFormatReadFeatureType() = Feature::class.java
+
+    override fun getFormatWriteFeatureType() = Feature::class.java
 
     /*
      **********************************************************
@@ -95,23 +110,19 @@ open class NbtFactory : JsonFactory {
 
     override fun getFormatName() = "NBT"
 
-    override fun canUseCharArrays() = false
-
     override fun hasFormat(accessor: InputAccessor) = MatchStrength.INCONCLUSIVE
 
     /*
      **********************************************************
-     * Capability introspection
+     * Versioned
      **********************************************************
      */
 
-    override fun getFormatReadFeatureType() = Feature::class.java
-
-    override fun getFormatWriteFeatureType() = Feature::class.java
+    override fun version(): Version = PackageVersion.VERSION
 
     /*
      **********************************************************
-     * Configuration, settings
+     * Configuration, factory features
      **********************************************************
      */
 
@@ -129,7 +140,7 @@ open class NbtFactory : JsonFactory {
 
     /*
      **********************************************************
-     * Overridden parser factory methods
+     * Parser factories, traditional (blocking) I/O sources
      **********************************************************
      */
 
@@ -162,7 +173,7 @@ open class NbtFactory : JsonFactory {
 
     /*
      **********************************************************
-     * Overridden generator factory methods
+     * Generator factories
      **********************************************************
      */
 
@@ -178,7 +189,8 @@ open class NbtFactory : JsonFactory {
 
     /*
      **********************************************************
-     * Overridden internal factory methods
+     * Factory methods used by factory for creating parser instances,
+     * overridable by sub-classes
      **********************************************************
      */
 
@@ -190,11 +202,23 @@ open class NbtFactory : JsonFactory {
 
     override fun _createParser(bytes: ByteArray, offset: Int, length: Int, context: IOContext) = _createParser(ByteArrayInputStream(bytes, offset, length), context)
 
+    /*
+     **********************************************************
+     * Factory methods used by factory for creating generator instances,
+     * overridable by sub-classes
+     **********************************************************
+     */
     override fun _createGenerator(writer: Writer, context: IOContext): NbtGenerator = _nonByteTarget()
 
     override fun _createUTF8Generator(stream: OutputStream, context: IOContext) = NbtGenerator(_generatorFeatures, _objectCodec, createDataOutput(stream))
 
     override fun _createWriter(stream: OutputStream, encoding: JsonEncoding, context: IOContext): Writer = _nonByteTarget();
+
+    /*
+     **********************************************************
+     * Internal factory methods, other
+     **********************************************************
+     */
 
     private fun <T> _nonByteSource(): T = throw UnsupportedOperationException("Can not create parser for non-byte-based source.")
 

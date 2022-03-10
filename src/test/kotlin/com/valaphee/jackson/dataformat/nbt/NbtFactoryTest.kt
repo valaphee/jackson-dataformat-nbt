@@ -83,7 +83,7 @@ class NbtFactoryTest {
         val double: Double,
         val byteArray: ByteArray,
         val string: String,
-        /*val list: List<Byte>,*/
+        /*val list: List<Byte>, FIXME: only bytes in a iterable will be written as int*/
         val compound: Map<String, Any>,
         val intArray: IntArray,
         val longArray: LongArray

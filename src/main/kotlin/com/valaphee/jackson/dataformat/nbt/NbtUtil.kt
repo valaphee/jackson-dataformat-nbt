@@ -30,8 +30,7 @@ fun Map<String, Any?>.getFloatOrNull(key: String) = (get(key) as? Number)?.toFlo
 
 fun Map<String, Any?>.getDoubleOrNull(key: String) = (get(key) as? Number)?.toDouble()
 
-@Suppress("UNCHECKED_CAST")
-fun Map<String, Any?>.getByteArrayOrNull(key: String) = (get(key) as? List<Byte>)?.toByteArray()
+fun Map<String, Any?>.getByteArrayOrNull(key: String) = (get(key) as? ByteArray)
 
 fun Map<String, Any?>.getStringOrNull(key: String) = get(key) as? String
 

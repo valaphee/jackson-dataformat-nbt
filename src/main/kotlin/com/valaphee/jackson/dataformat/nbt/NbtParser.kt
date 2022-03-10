@@ -16,6 +16,7 @@
 
 package com.valaphee.jackson.dataformat.nbt
 
+import com.fasterxml.jackson.core.Base64Variant
 import com.fasterxml.jackson.core.JsonToken
 import com.fasterxml.jackson.core.ObjectCodec
 import com.fasterxml.jackson.core.Version
@@ -24,6 +25,7 @@ import com.fasterxml.jackson.core.io.IOContext
 import com.fasterxml.jackson.core.json.PackageVersion
 import java.io.Closeable
 import java.io.DataInput
+import java.io.OutputStream
 import java.math.BigDecimal
 import java.math.BigInteger
 
@@ -44,7 +46,7 @@ open class NbtParser(
 
     /*
      **********************************************************
-     * Life-cycle
+     * Construction, configuration, initialization
      **********************************************************
      */
 
@@ -64,7 +66,134 @@ open class NbtParser(
 
     /*
      **********************************************************
-     * JsonParser implementation: Text value access
+     * Public API, traversal
+     **********************************************************
+     */
+
+    override fun nextToken() = _nextToken().also { _currToken = it }
+
+    private fun _nextToken(): JsonToken {
+        _numTypesValid = NR_UNKNOWN
+        _binaryValue = null
+        currentValue = null
+
+        // For compounds to work properly, multiple runs are needed, therefore a state is required.
+        if (!_objectStartState) when (_contexts.lastOrNull()?.type) {
+            NbtType.Compound -> {
+                val type = NbtType.values()[_input.readByte().toInt()]
+                if (type == NbtType.End) _objectEndState = true
+                else {
+                    _contexts += Context(type)
+                    if (type == NbtType.Compound) _objectStartState = true
+                    parsingContext.currentName = _input.readUTF()
+                    return JsonToken.FIELD_NAME
+                }
+            }
+            null -> {
+                val type = NbtType.values()[_input.readByte().toInt()]
+                if (type == NbtType.End) return JsonToken.VALUE_NULL
+                else {
+                    _contexts += Context(type)
+                    parsingContext.currentName = _input.readUTF()
+                }
+            }
+            else -> Unit
+        }
+
+        // Decrement tags, and remove when finished.
+        _contexts.lastOrNull()?.let {
+            if (it.arrayState == 0) {
+                _contexts.removeLast()
+                return when (it.type) {
+                    /*NbtType.ByteArray, */NbtType.List, NbtType.IntArray, NbtType.LongArray -> JsonToken.END_ARRAY
+                    NbtType.Compound -> {
+                        _objectEndState = false
+                        JsonToken.END_OBJECT
+                    }
+                    else -> _nextToken()
+                }
+            } else it.arrayState--
+        }
+
+        // When a list of compounds is present then a tag should not only end when there are no elements present in the list.
+        if (_objectEndState) {
+            _objectEndState = false
+            return JsonToken.END_OBJECT
+        }
+
+        return when (val type = _contexts.lastOrNull()?.type) {
+            NbtType.Byte -> {
+                _numTypesValid = NR_INT
+                _numberInt = _input.readByte().toInt()
+                when (_numberInt) {
+                    0 -> JsonToken.VALUE_FALSE
+                    1 -> JsonToken.VALUE_TRUE
+                    else -> JsonToken.VALUE_NUMBER_INT
+                }
+            }
+            NbtType.Short -> {
+                _numTypesValid = NR_INT
+                _numberInt = _input.readShort().toInt()
+                JsonToken.VALUE_NUMBER_INT
+            }
+            NbtType.Int -> {
+                _numTypesValid = NR_INT
+                _numberInt = _input.readInt()
+                JsonToken.VALUE_NUMBER_INT
+            }
+            NbtType.Long -> {
+                _numTypesValid = NR_LONG
+                _numberLong = _input.readLong()
+                JsonToken.VALUE_NUMBER_INT
+            }
+            NbtType.Float -> {
+                _numTypesValid = NR_FLOAT
+                _numberFloat = _input.readFloat()
+                JsonToken.VALUE_NUMBER_FLOAT
+            }
+            NbtType.Double -> {
+                _numTypesValid = NR_DOUBLE
+                _numberDouble = _input.readDouble()
+                JsonToken.VALUE_NUMBER_FLOAT
+            }
+            NbtType.ByteArray -> {
+                /*_contexts += Context(NbtType.Int, _input.readInt())*/
+                _binaryValue = ByteArray(_input.readInt())
+                _input.readFully(_binaryValue)
+                currentValue = _binaryValue
+                JsonToken.VALUE_EMBEDDED_OBJECT
+            }
+            NbtType.String -> {
+                currentValue = _input.readUTF()
+                JsonToken.VALUE_STRING
+            }
+            NbtType.List -> {
+                val listType = NbtType.values()[_input.readByte().toInt()]
+                _contexts += Context(listType, _input.readInt())
+                if (listType == NbtType.Compound) _objectStartState = true
+                JsonToken.START_ARRAY
+            }
+            NbtType.Compound -> {
+                _objectStartState = false
+                JsonToken.START_OBJECT
+            }
+            NbtType.IntArray -> {
+                _contexts += Context(NbtType.Int, _input.readInt())
+                /*currentValue = IntArray(_input.readInt()) { _input.readInt() }*/
+                JsonToken.START_ARRAY/*VALUE_EMBEDDED_OBJECT*/
+            }
+            NbtType.LongArray -> {
+                _contexts += Context(NbtType.Long, _input.readInt())
+                /*currentValue = LongArray(_input.readInt()) { _input.readLong() }*/
+                JsonToken.START_ARRAY/*VALUE_EMBEDDED_OBJECT*/
+            }
+            else -> TODO("$type")
+        }
+    }
+
+    /*
+     **********************************************************
+     * Public API, access to token information, text
      **********************************************************
      */
 
@@ -82,7 +211,7 @@ open class NbtParser(
 
     /*
      **********************************************************
-     * JsonParser implementation: Numeric value access
+     * Numeric accessors of public API
      **********************************************************
      */
 
@@ -190,128 +319,30 @@ open class NbtParser(
 
     /*
      **********************************************************
-     * JsonParser implementation: traversal
+     * Public API, access to token information, binary
      **********************************************************
      */
 
-    override fun nextToken() = _nextToken().also { _currToken = it }
+    override fun getBinaryValue(variant: Base64Variant): ByteArray {
+        if (_currToken != JsonToken.VALUE_EMBEDDED_OBJECT) _reportError("Current token ($_currToken) not VALUE_EMBEDDED_OBJECT, can not access as binary")
+        return _binaryValue
+    }
 
-    private fun _nextToken(): JsonToken {
-        _numTypesValid = NR_UNKNOWN
-        currentValue = null
+    override fun getEmbeddedObject() = if (_currToken == JsonToken.VALUE_EMBEDDED_OBJECT) currentValue else null
 
-        // For compounds to work properly, multiple runs are needed, therefore a state is required.
-        if (!_objectStartState) when (_contexts.lastOrNull()?.type) {
-            NbtType.Compound -> {
-                val type = NbtType.values()[_input.readByte().toInt()]
-                if (type == NbtType.End) _objectEndState = true
-                else {
-                    _contexts += Context(type)
-                    if (type == NbtType.Compound) _objectStartState = true
-                    parsingContext.currentName = _input.readUTF()
-                    return JsonToken.FIELD_NAME
-                }
-            }
-            null -> {
-                val type = NbtType.values()[_input.readByte().toInt()]
-                if (type == NbtType.End) return JsonToken.VALUE_NULL
-                else {
-                    _contexts += Context(type)
-                    parsingContext.currentName = _input.readUTF()
-                }
-            }
-            else -> Unit
-        }
+    override fun readBinaryValue(variant: Base64Variant, stream: OutputStream): Int {
+        if (_currToken != JsonToken.VALUE_EMBEDDED_OBJECT) _reportError("Current token ($_currToken) not VALUE_EMBEDDED_OBJECT, can not access as binary")
 
-        // Decrement tags, and remove when finished.
-        _contexts.lastOrNull()?.let {
-            if (it.arrayState == 0) {
-                _contexts.removeLast()
-                return when (it.type) {
-                    NbtType.ByteArray, NbtType.List, NbtType.IntArray, NbtType.LongArray -> JsonToken.END_ARRAY
-                    NbtType.Compound -> {
-                        _objectEndState = false
-                        JsonToken.END_OBJECT
-                    }
-                    else -> _nextToken()
-                }
-            } else it.arrayState--
-        }
-
-        // When a list of compounds is present then a tag should not only end when there are no elements present in the list.
-        if (_objectEndState) {
-            _objectEndState = false
-            return JsonToken.END_OBJECT
-        }
-
-        return when (val type = _contexts.lastOrNull()?.type) {
-            NbtType.Byte -> {
-                _numTypesValid = NR_INT
-                _numberInt = _input.readByte().toInt()
-                when (_numberInt) {
-                    0 -> JsonToken.VALUE_FALSE
-                    1 -> JsonToken.VALUE_TRUE
-                    else -> JsonToken.VALUE_NUMBER_INT
-                }
-            }
-            NbtType.Short -> {
-                _numTypesValid = NR_INT
-                _numberInt = _input.readShort().toInt()
-                JsonToken.VALUE_NUMBER_INT
-            }
-            NbtType.Int -> {
-                _numTypesValid = NR_INT
-                _numberInt = _input.readInt()
-                JsonToken.VALUE_NUMBER_INT
-            }
-            NbtType.Long -> {
-                _numTypesValid = NR_LONG
-                _numberLong = _input.readLong()
-                JsonToken.VALUE_NUMBER_INT
-            }
-            NbtType.Float -> {
-                _numTypesValid = NR_FLOAT
-                _numberFloat = _input.readFloat()
-                JsonToken.VALUE_NUMBER_FLOAT
-            }
-            NbtType.Double -> {
-                _numTypesValid = NR_DOUBLE
-                _numberDouble = _input.readDouble()
-                JsonToken.VALUE_NUMBER_FLOAT
-            }
-            NbtType.ByteArray -> {
-                _contexts += Context(NbtType.Byte, _input.readInt())
-                JsonToken.START_ARRAY
-            }
-            NbtType.String -> {
-                currentValue = _input.readUTF()
-                JsonToken.VALUE_STRING
-            }
-            NbtType.List -> {
-                val listType = NbtType.values()[_input.readByte().toInt()]
-                _contexts += Context(listType, _input.readInt())
-                if (listType == NbtType.Compound) _objectStartState = true
-                JsonToken.START_ARRAY
-            }
-            NbtType.Compound -> {
-                _objectStartState = false
-                JsonToken.START_OBJECT
-            }
-            NbtType.IntArray -> {
-                _contexts += Context(NbtType.Int, _input.readInt())
-                JsonToken.START_ARRAY
-            }
-            NbtType.LongArray -> {
-                _contexts += Context(NbtType.Long, _input.readInt())
-                JsonToken.START_ARRAY
-            }
-            else -> TODO("$type")
-        }
+        return _binaryValue?.let {
+            val length = _binaryValue.size
+            stream.write(_binaryValue, 0, length)
+            length
+        } ?: 0
     }
 
     /*
      **********************************************************
-     * Low-level reading, other
+     * Abstract methods for sub-classes to implement
      **********************************************************
      */
 

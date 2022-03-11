@@ -25,9 +25,9 @@ import com.fasterxml.jackson.core.json.JsonWriteContext
 open class NbtWriteContext(
     type: Int,
     parent: NbtWriteContext?,
-    dups: DupDetector?,
+    dupDetector: DupDetector?,
     protected val _generator: NbtGenerator
-) : JsonWriteContext(type, parent, dups) {
+) : JsonWriteContext(type, parent, dupDetector) {
     lateinit var nbtType: NbtType
 
     /*
@@ -42,7 +42,7 @@ open class NbtWriteContext(
 
     fun writeValue(nbtType: NbtType) {
         when (_type) {
-            TYPE_ROOT -> {
+            TYPE_ROOT -> if (!NbtFactory.Feature.NoWrap.enabledIn(this._generator.formatFeatures)) {
                 _generator._output.writeByte(nbtType.ordinal)
                 _generator._output.writeUTF("")
             }
@@ -62,6 +62,6 @@ open class NbtWriteContext(
     }
 
     companion object {
-        fun createRootContext(dups: DupDetector?, generator: NbtGenerator) = NbtWriteContext(TYPE_ROOT, null, dups, generator)
+        fun createRootContext(dupDetector: DupDetector?, generator: NbtGenerator) = NbtWriteContext(TYPE_ROOT, null, dupDetector, generator)
     }
 }

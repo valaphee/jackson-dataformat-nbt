@@ -36,7 +36,8 @@ import java.math.BigInteger
 open class NbtGenerator(
     features: Int,
     codec: ObjectCodec,
-    internal val _output: DataOutput
+    internal val _output: DataOutput,
+    protected val _formatFeatures: Int
 ) : GeneratorBase(features, codec) {
     protected val _nbtWriteContext get() = _writeContext as NbtWriteContext
 
@@ -51,6 +52,14 @@ open class NbtGenerator(
      */
 
     override fun version(): Version = PackageVersion.VERSION
+
+    /*
+     **********************************************************
+     * Public API, Feature configuration
+     **********************************************************
+     */
+
+    override fun getFormatFeatures() = _formatFeatures
 
     /*
      **********************************************************
@@ -133,7 +142,7 @@ open class NbtGenerator(
     }
 
     override fun writeEndArray() {
-        if (!_nbtWriteContext.inArray()) _reportError("Not an array: ${_nbtWriteContext.typeDesc()}");
+        if (!_writeContext.inArray()) _reportError("Not an array: ${_writeContext.typeDesc()}");
 
         _nbtWriteContext.writeEnd()
 
@@ -149,9 +158,9 @@ open class NbtGenerator(
     }
 
     override fun writeEndObject() {
-        if (!_nbtWriteContext.inObject()) _reportError("Not an object: ${_nbtWriteContext.typeDesc()}");
+        if (!_writeContext.inObject()) _reportError("Not an object: ${_writeContext.typeDesc()}");
 
-        _nbtWriteContext.writeEnd()
+        if (!(_writeContext.parent.inRoot() && NbtFactory.Feature.NoWrap.enabledIn(_formatFeatures))) _nbtWriteContext.writeEnd()
 
         _writeContext = _writeContext.parent
     }
@@ -307,7 +316,7 @@ open class NbtGenerator(
     override fun writeNull() {
         _verifyValueWrite("write null")
 
-        if (_nbtWriteContext.inRoot()) _output.writeByte(NbtType.End.ordinal)
+        if (_writeContext.inRoot()) _output.writeByte(NbtType.End.ordinal)
     }
 
     /*

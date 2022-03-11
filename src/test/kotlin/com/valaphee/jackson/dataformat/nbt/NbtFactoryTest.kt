@@ -32,27 +32,48 @@ import kotlin.system.measureNanoTime
 class NbtFactoryTest {
     @Test
     fun `self-test with basic structure`() {
-        val objectMapper = ObjectMapper(NbtFactory()).apply { registerKotlinModule() }
+        val objectMapper = ObjectMapper(NbtFactory()).registerKotlinModule()
+        val value = BasicValue(Byte.MAX_VALUE, Short.MAX_VALUE, Int.MAX_VALUE, Long.MAX_VALUE, Float.MAX_VALUE, Double.MAX_VALUE, byteArrayOf(0xDE.toByte(), 0xAD.toByte(), 0xBE.toByte(), 0xEF.toByte()), "Hello World"/*, listOf(0xDE.toByte(), 0xAD.toByte(), 0xBE.toByte(), 0xEF.toByte())*/, mapOf("Hello" to "World"), intArrayOf(0xDE, 0xAD, 0xBE, 0xEF), longArrayOf(0xDE, 0xAD, 0xBE, 0xEF))
+        assertEquals(value, objectMapper.readValue<BasicValue>(objectMapper.writeValueAsBytes(value)))
+    }
+
+    @Test
+    fun `self-test with basic structure and little-endian`() {
+        val objectMapper = ObjectMapper(NbtFactory().enable(NbtFactory.Feature.LittleEndian)).registerKotlinModule()
+        val value = BasicValue(Byte.MAX_VALUE, Short.MAX_VALUE, Int.MAX_VALUE, Long.MAX_VALUE, Float.MAX_VALUE, Double.MAX_VALUE, byteArrayOf(0xDE.toByte(), 0xAD.toByte(), 0xBE.toByte(), 0xEF.toByte()), "Hello World"/*, listOf(0xDE.toByte(), 0xAD.toByte(), 0xBE.toByte(), 0xEF.toByte())*/, mapOf("Hello" to "World"), intArrayOf(0xDE, 0xAD, 0xBE, 0xEF), longArrayOf(0xDE, 0xAD, 0xBE, 0xEF))
+        assertEquals(value, objectMapper.readValue<BasicValue>(objectMapper.writeValueAsBytes(value)))
+    }
+
+    @Test
+    fun `self-test with basic structure, little-endian and varint`() {
+        val objectMapper = ObjectMapper(NbtFactory().enable(NbtFactory.Feature.LittleEndian).enable(NbtFactory.Feature.VarInt)).registerKotlinModule()
+        val value = BasicValue(Byte.MAX_VALUE, Short.MAX_VALUE, Int.MAX_VALUE, Long.MAX_VALUE, Float.MAX_VALUE, Double.MAX_VALUE, byteArrayOf(0xDE.toByte(), 0xAD.toByte(), 0xBE.toByte(), 0xEF.toByte()), "Hello World"/*, listOf(0xDE.toByte(), 0xAD.toByte(), 0xBE.toByte(), 0xEF.toByte())*/, mapOf("Hello" to "World"), intArrayOf(0xDE, 0xAD, 0xBE, 0xEF), longArrayOf(0xDE, 0xAD, 0xBE, 0xEF))
+        assertEquals(value, objectMapper.readValue<BasicValue>(objectMapper.writeValueAsBytes(value)))
+    }
+
+    @Test
+    fun `self-test with basic structure and no-wrap`() {
+        val objectMapper = ObjectMapper(NbtFactory().enable(NbtFactory.Feature.NoWrap)).registerKotlinModule()
         val value = BasicValue(Byte.MAX_VALUE, Short.MAX_VALUE, Int.MAX_VALUE, Long.MAX_VALUE, Float.MAX_VALUE, Double.MAX_VALUE, byteArrayOf(0xDE.toByte(), 0xAD.toByte(), 0xBE.toByte(), 0xEF.toByte()), "Hello World"/*, listOf(0xDE.toByte(), 0xAD.toByte(), 0xBE.toByte(), 0xEF.toByte())*/, mapOf("Hello" to "World"), intArrayOf(0xDE, 0xAD, 0xBE, 0xEF), longArrayOf(0xDE, 0xAD, 0xBE, 0xEF))
         assertEquals(value, objectMapper.readValue<BasicValue>(objectMapper.writeValueAsBytes(value)))
     }
 
     @Test
     fun `self-test with nested structure`() {
-        val objectMapper = ObjectMapper(NbtFactory()).apply { registerKotlinModule() }
+        val objectMapper = ObjectMapper(NbtFactory()).registerKotlinModule()
         val value = NestedValue("Hello", listOf(NestedValue("World", emptyList()), NestedValue("Hello2", listOf(NestedValue("World2", emptyList())))))
         assertEquals(value, objectMapper.readValue<NestedValue>(objectMapper.writeValueAsBytes(value)))
     }
 
     @Test
     fun `big test`() {
-        val objectMapper = ObjectMapper(NbtFactory()).apply { registerKotlinModule() }
+        val objectMapper = ObjectMapper(NbtFactory()).registerKotlinModule()
         objectMapper.readValue<Any?>(javaClass.getResource("/bigtest.nbt")!!)
     }
 
     @Test
     fun `test exploit`() {
-        val objectMapper = ObjectMapper(NbtFactory()).apply { registerKotlinModule() }
+        val objectMapper = ObjectMapper(NbtFactory()).registerKotlinModule()
 
         // 1. Run
         ByteArrayOutputStream().use {

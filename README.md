@@ -13,20 +13,19 @@ To use this extension on Maven-based projects, use following dependency:
 <dependency>
   <groupId>com.valaphee</groupId>
   <artifactId>jackson-dataformat-nbt</artifactId>
-  <version>1.1.0</version>
+  <version>1.1.8</version>
 </dependency>
 ```
 
 and for Gradle-based projects:
 
 ```kotlin
-implementation("com.valaphee:jackson-dataformat-nbt:1.1.0")
+implementation("com.valaphee:jackson-dataformat-nbt:1.1.8")
 ```
 
 ## Usage
 
 Basic usage is by using `NbtFactory` in places where you would usually use `JsonFactory`
-(or `NbtFactory` instead `JsonMapper`/`ObjectMapper`)
 
 ```java
 ObjectMapper mapper = new ObjectMapper(NbtFactory());

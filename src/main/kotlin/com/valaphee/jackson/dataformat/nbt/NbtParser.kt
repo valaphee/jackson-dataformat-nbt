@@ -25,6 +25,7 @@ import com.fasterxml.jackson.core.io.IOContext
 import com.fasterxml.jackson.core.json.PackageVersion
 import java.io.Closeable
 import java.io.DataInput
+import java.io.EOFException
 import java.io.OutputStream
 import java.math.BigDecimal
 import java.math.BigInteger
@@ -36,9 +37,10 @@ open class NbtParser(
     context: IOContext,
     features: Int,
     protected var _codec: ObjectCodec,
-    protected val _input: DataInput
+    protected val _input: DataInput,
+    protected val _formatFeatures: Int
 ) : ParserBase(context, features) {
-    protected var _contexts = mutableListOf<Context>()
+    protected var _contexts = mutableListOf<Context>().apply { if (NbtFactory.Feature.NoWrap.enabledIn(_formatFeatures)) add(Context(NbtType.Compound)) }
     protected var _objectStartState = false
     protected var _objectEndState = false
 
@@ -66,6 +68,14 @@ open class NbtParser(
 
     /*
      **********************************************************
+     * Public API, configuration
+     **********************************************************
+     */
+
+    override fun getFormatFeatures() = _formatFeatures
+
+    /*
+     **********************************************************
      * Public API, traversal
      **********************************************************
      */
@@ -77,10 +87,16 @@ open class NbtParser(
         _binaryValue = null
         currentValue = null
 
+        if (_currToken == null && NbtFactory.Feature.NoWrap.enabledIn(_formatFeatures)) return JsonToken.START_OBJECT
+
         // For compounds to work properly, multiple runs are needed, therefore a state is required.
         if (!_objectStartState) when (_contexts.lastOrNull()?.type) {
             NbtType.Compound -> {
-                val type = NbtType.values()[_input.readByte().toInt()]
+                val type = try {
+                    NbtType.values()[_input.readByte().toInt()]
+                } catch (_: EOFException) {
+                    NbtType.End
+                }
                 if (type == NbtType.End) _objectEndState = true
                 else {
                     _contexts += Context(type)
@@ -157,7 +173,7 @@ open class NbtParser(
                 JsonToken.VALUE_NUMBER_FLOAT
             }
             NbtType.ByteArray -> {
-                /*_contexts += Context(NbtType.Int, _input.readInt())*/
+                /*_contexts += Context(NbtType.Byte, _input.readInt())*/
                 _binaryValue = ByteArray(_input.readInt())
                 _input.readFully(_binaryValue)
                 currentValue = _binaryValue

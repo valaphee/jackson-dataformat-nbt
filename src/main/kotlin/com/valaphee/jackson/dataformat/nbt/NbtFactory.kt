@@ -50,7 +50,8 @@ open class NbtFactory : JsonFactory {
         protected val _defaultState: Boolean,
     ) : FormatFeature {
         LittleEndian(false),
-        VarInt(false);
+        VarInt(false),
+        NoWrap(false);
 
         protected val _mask = 1 shl ordinal
 
@@ -194,7 +195,7 @@ open class NbtFactory : JsonFactory {
      **********************************************************
      */
 
-    override fun _createParser(stream: InputStream, context: IOContext) = NbtParser(context, _parserFeatures, _objectCodec, createDataInput(stream))
+    override fun _createParser(stream: InputStream, context: IOContext) = NbtParser(context, _parserFeatures, _objectCodec, createDataInput(stream), _formatFeatures)
 
     override fun _createParser(reader: Reader, context: IOContext): NbtParser = _nonByteSource()
 
@@ -210,7 +211,7 @@ open class NbtFactory : JsonFactory {
      */
     override fun _createGenerator(writer: Writer, context: IOContext): NbtGenerator = _nonByteTarget()
 
-    override fun _createUTF8Generator(stream: OutputStream, context: IOContext) = NbtGenerator(_generatorFeatures, _objectCodec, createDataOutput(stream))
+    override fun _createUTF8Generator(stream: OutputStream, context: IOContext) = NbtGenerator(_generatorFeatures, _objectCodec, createDataOutput(stream), _formatFeatures)
 
     override fun _createWriter(stream: OutputStream, encoding: JsonEncoding, context: IOContext): Writer = _nonByteTarget();
 

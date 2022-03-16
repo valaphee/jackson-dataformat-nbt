@@ -24,6 +24,7 @@ import com.fasterxml.jackson.core.Version
 import com.fasterxml.jackson.core.base.GeneratorBase
 import com.fasterxml.jackson.core.json.JsonWriteContext
 import com.fasterxml.jackson.core.json.PackageVersion
+import com.valaphee.jackson.dataformat.nbt.util.ByteSerializer
 import java.io.Closeable
 import java.io.DataOutput
 import java.io.Flushable

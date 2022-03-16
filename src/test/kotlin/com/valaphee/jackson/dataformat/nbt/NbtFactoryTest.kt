@@ -17,9 +17,12 @@
 package com.valaphee.jackson.dataformat.nbt
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import com.valaphee.jackson.dataformat.nbt.util.DeepEqualsLinkedHashMap
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Test
 import java.io.ByteArrayOutputStream
 import kotlin.system.measureNanoTime
@@ -91,6 +94,15 @@ class NbtFactoryTest {
             } / 1_000_000.0) + "ms")
             println("${Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()}B used")
         }
+    }
+
+    @Test
+    fun `test deep equals`() {
+        val objectMapper = ObjectMapper(NbtFactory()).registerKotlinModule().registerModule(SimpleModule().addAbstractTypeMapping(Map::class.java, DeepEqualsLinkedHashMap::class.java))
+        val value = mapOf("test" to byteArrayOf(0x00, 0x01))
+        val value2 = mapOf("test" to byteArrayOf(0x02, 0x03))
+        assertEquals(objectMapper.readValue<Any?>(objectMapper.writeValueAsBytes(value)).also { println(it?.javaClass?.name) }, objectMapper.readValue<Any?>(objectMapper.writeValueAsBytes(value)))
+        assertNotEquals(objectMapper.readValue<Any?>(objectMapper.writeValueAsBytes(value)), objectMapper.readValue<Any?>(objectMapper.writeValueAsBytes(value2)))
     }
 
     data class BasicValue(

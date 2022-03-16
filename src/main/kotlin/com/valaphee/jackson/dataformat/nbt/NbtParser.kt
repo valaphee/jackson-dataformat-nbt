@@ -40,6 +40,11 @@ open class NbtParser(
     protected val _input: DataInput,
     protected val _formatFeatures: Int
 ) : ParserBase(context, features) {
+    protected class Context(
+        val type: NbtType,
+        var arrayState: Int = 1
+    )
+
     protected var _contexts = mutableListOf<Context>().apply { if (NbtFactory.Feature.NoWrap.enabledIn(_formatFeatures)) add(Context(NbtType.Compound)) }
     protected var _objectStartState = false
     protected var _objectEndState = false
@@ -185,8 +190,11 @@ open class NbtParser(
             }
             NbtType.List -> {
                 val listType = NbtType.values()[_input.readByte().toInt()]
-                _contexts += Context(listType, _input.readInt())
-                if (listType == NbtType.Compound) _objectStartState = true
+                val length = _input.readInt()
+                if (length > 0) {
+                    if (listType == NbtType.Compound) _objectStartState = true
+                    _contexts += Context(listType, length)
+                }
                 JsonToken.START_ARRAY
             }
             NbtType.Compound -> {
@@ -365,9 +373,4 @@ open class NbtParser(
     override fun _closeInput() {
         if (_input is Closeable) _input.close()
     }
-
-    protected class Context(
-        val type: NbtType,
-        var arrayState: Int = 1
-    )
 }

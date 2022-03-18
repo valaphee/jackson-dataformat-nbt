@@ -28,7 +28,7 @@ class DeepEqualsLinkedHashMap<K, V> : LinkedHashMap<K, V> {
 
     constructor() : super()
 
-    constructor(m: MutableMap<out K, out V>?) : super(m)
+    constructor(other: Map<out K, V>?) : super(other)
 
     constructor(initialCapacity: Int, loadFactor: Float, accessOrder: Boolean) : super(initialCapacity, loadFactor, accessOrder)
 

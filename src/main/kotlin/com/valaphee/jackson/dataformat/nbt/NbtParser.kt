@@ -126,7 +126,7 @@ open class NbtParser(
             if (it.arrayState == 0) {
                 _contexts.removeLast()
                 return when (it.type) {
-                    /*NbtType.ByteArray, */NbtType.List, NbtType.IntArray, NbtType.LongArray -> JsonToken.END_ARRAY
+                    /*NbtType.ByteArray, */NbtType.List/*, NbtType.IntArray, NbtType.LongArray*/ -> JsonToken.END_ARRAY
                     NbtType.Compound -> {
                         _objectEndState = false
                         JsonToken.END_OBJECT
@@ -151,7 +151,7 @@ open class NbtParser(
                 when (_numberInt) {
                     0 -> JsonToken.VALUE_FALSE
                     1 -> JsonToken.VALUE_TRUE
-                    else -> JsonToken.VALUE_EMBEDDED_OBJECT
+                    else -> JsonToken./*VALUE_NUMBER_INT*/VALUE_EMBEDDED_OBJECT
                 }
             }
             NbtType.Short -> {
@@ -159,7 +159,7 @@ open class NbtParser(
                 val value = _input.readShort()
                 _numberInt = value.toInt()
                 currentValue = value
-                JsonToken.VALUE_EMBEDDED_OBJECT
+                JsonToken./*VALUE_NUMBER_INT*/VALUE_EMBEDDED_OBJECT
             }
             NbtType.Int -> {
                 _numTypesValid = NR_INT
@@ -206,14 +206,14 @@ open class NbtParser(
                 JsonToken.START_OBJECT
             }
             NbtType.IntArray -> {
-                _contexts += Context(NbtType.Int, _input.readInt())
-                /*currentValue = IntArray(_input.readInt()) { _input.readInt() }*/
-                JsonToken.START_ARRAY/*VALUE_EMBEDDED_OBJECT*/
+                /*_contexts += Context(NbtType.Int, _input.readInt())*/
+                currentValue = IntArray(_input.readInt()) { _input.readInt() }
+                JsonToken./*START_ARRAY*/VALUE_EMBEDDED_OBJECT
             }
             NbtType.LongArray -> {
-                _contexts += Context(NbtType.Long, _input.readInt())
-                /*currentValue = LongArray(_input.readInt()) { _input.readLong() }*/
-                JsonToken.START_ARRAY/*VALUE_EMBEDDED_OBJECT*/
+                /*_contexts += Context(NbtType.Long, _input.readInt())*/
+                currentValue = LongArray(_input.readInt()) { _input.readLong() }
+                JsonToken./*START_ARRAY*/VALUE_EMBEDDED_OBJECT
             }
             else -> TODO("$type")
         }

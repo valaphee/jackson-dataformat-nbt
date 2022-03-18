@@ -25,11 +25,11 @@ import com.fasterxml.jackson.databind.deser.DeserializationProblemHandler
 /**
  * @author Kevin Ludwig
  */
-object ByteDeserializationProblemHandler : DeserializationProblemHandler() {
+object EmbeddedNumberDeserializationProblemHandler : DeserializationProblemHandler() {
     override fun handleUnexpectedToken(context: DeserializationContext, targetType: JavaType, token: JsonToken, parser: JsonParser, message: String?): Any {
         if (token == JsonToken.VALUE_EMBEDDED_OBJECT) {
             val value = parser.currentValue
-            if (value is Byte) return value
+            if (value is Number) return value
         }
         return NOT_HANDLED
     }

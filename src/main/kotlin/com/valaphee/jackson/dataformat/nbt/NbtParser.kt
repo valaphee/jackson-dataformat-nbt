@@ -23,7 +23,6 @@ import com.fasterxml.jackson.core.Version
 import com.fasterxml.jackson.core.base.ParserBase
 import com.fasterxml.jackson.core.io.IOContext
 import com.fasterxml.jackson.core.json.PackageVersion
-import com.valaphee.jackson.dataformat.nbt.util.ByteSerializer
 import java.io.Closeable
 import java.io.DataInput
 import java.io.EOFException
@@ -157,8 +156,10 @@ open class NbtParser(
             }
             NbtType.Short -> {
                 _numTypesValid = NR_INT
-                _numberInt = _input.readShort().toInt()
-                JsonToken.VALUE_NUMBER_INT
+                val value = _input.readShort()
+                _numberInt = value.toInt()
+                currentValue = value
+                JsonToken.VALUE_EMBEDDED_OBJECT
             }
             NbtType.Int -> {
                 _numTypesValid = NR_INT
@@ -375,11 +376,5 @@ open class NbtParser(
 
     override fun _closeInput() {
         if (_input is Closeable) _input.close()
-    }
-
-    companion object {
-        init {
-            ByteSerializer
-        }
     }
 }

@@ -17,27 +17,28 @@
 package com.valaphee.jackson.dataformat.nbt.util
 
 import com.fasterxml.jackson.core.JsonGenerator
+import com.fasterxml.jackson.core.JsonParser
+import com.fasterxml.jackson.databind.JsonSerializer
 import com.fasterxml.jackson.databind.SerializerProvider
 import com.fasterxml.jackson.databind.annotation.JacksonStdImpl
-import com.fasterxml.jackson.databind.ser.std.NumberSerializers.IntLikeSerializer
+import com.fasterxml.jackson.databind.ser.BasicSerializerFactory
+import com.fasterxml.jackson.databind.ser.std.NumberSerializers
 import com.valaphee.jackson.dataformat.nbt.NbtGenerator
-import java.lang.reflect.Field
-import java.lang.reflect.Modifier
 
 /**
  * @author Kevin Ludwig
  */
 @JacksonStdImpl
-object ByteSerializer : IntLikeSerializer() {
+object ByteSerializer : NumberSerializers.Base<Any?>(Byte::class.java, JsonParser.NumberType.INT, "number") {
     init {
-        IntLikeSerializer::class.java.getDeclaredField("instance").apply {
-            isAccessible = true
-            @Suppress("UNCHECKED_CAST")
-            (Class::class.java.getDeclaredMethod("getDeclaredFields0", Boolean::class.java).apply { isAccessible = true }(Field::class.java, false) as Array<Field>).first { it.name == "modifiers" }.apply { isAccessible = true }.setInt(this, modifiers and Modifier.FINAL.inv())
-        }[null] = ByteSerializer
+        @Suppress("UNCHECKED_CAST")
+        (BasicSerializerFactory::class.java.getDeclaredField("_concrete").apply { isAccessible = true }.get(null) as MutableMap<String, JsonSerializer<*>>).apply {
+            this[java.lang.Byte::class.java.name] = ByteSerializer
+            this[java.lang.Byte.TYPE::class.java.name] = ByteSerializer
+        }
     }
 
     override fun serialize(value: Any?, generator: JsonGenerator, provider: SerializerProvider) {
-        if (generator is NbtGenerator) generator.writeNumber(value as Byte) else super.serialize(value, generator, provider)
+        if (generator is NbtGenerator) generator.writeNumber(value as Byte) else generator.writeNumber((value as Byte).toInt()) // See com.fasterxml.jackson.databind.ser.std.NumberSerializers.IntLikeSerializer
     }
 }

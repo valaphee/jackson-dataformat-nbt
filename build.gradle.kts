@@ -44,10 +44,7 @@ tasks {
 
     withType<KotlinCompile>().configureEach { kotlinOptions { jvmTarget = "16" } }
 
-    withType<Test> {
-        jvmArgs("--add-opens", "java.base/java.lang.reflect=ALL-UNNAMED")
-        useJUnitPlatform()
-    }
+    withType<Test> { useJUnitPlatform() }
 }
 
 java {

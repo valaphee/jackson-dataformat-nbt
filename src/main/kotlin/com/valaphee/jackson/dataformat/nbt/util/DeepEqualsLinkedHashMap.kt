@@ -23,9 +23,13 @@ import java.util.Objects
  */
 class DeepEqualsLinkedHashMap<K, V> : LinkedHashMap<K, V> {
     constructor(initialCapacity: Int, loadFactor: Float) : super(initialCapacity, loadFactor)
+
     constructor(initialCapacity: Int) : super(initialCapacity)
+
     constructor() : super()
+
     constructor(m: MutableMap<out K, out V>?) : super(m)
+
     constructor(initialCapacity: Int, loadFactor: Float, accessOrder: Boolean) : super(initialCapacity, loadFactor, accessOrder)
 
     override fun equals(other: Any?): Boolean {

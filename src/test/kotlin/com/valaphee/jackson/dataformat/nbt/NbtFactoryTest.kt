@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import com.valaphee.jackson.dataformat.nbt.util.ByteDeserializationProblemHandler
 import com.valaphee.jackson.dataformat.nbt.util.DeepEqualsLinkedHashMap
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
@@ -32,49 +33,56 @@ import kotlin.system.measureNanoTime
  */
 class NbtFactoryTest {
     @Test
+    fun `self-test with jlc`() {
+        val objectMapper = ObjectMapper(NbtFactory()).registerKotlinModule().addHandler(ByteDeserializationProblemHandler)
+        val value = mapOf("test" to Byte.MAX_VALUE)
+        assertEquals(value, objectMapper.readValue<Any?>(objectMapper.writeValueAsBytes(value)))
+    }
+
+    @Test
     fun `self-test with basic structure`() {
-        val objectMapper = ObjectMapper(NbtFactory()).registerKotlinModule()
+        val objectMapper = ObjectMapper(NbtFactory()).registerKotlinModule().addHandler(ByteDeserializationProblemHandler)
         val value = BasicValue(Byte.MAX_VALUE, Short.MAX_VALUE, Int.MAX_VALUE, Long.MAX_VALUE, Float.MAX_VALUE, Double.MAX_VALUE, byteArrayOf(0xDE.toByte(), 0xAD.toByte(), 0xBE.toByte(), 0xEF.toByte()), "Hello World"/*, listOf(0xDE.toByte(), 0xAD.toByte(), 0xBE.toByte(), 0xEF.toByte())*/, mapOf("Hello" to "World"), intArrayOf(0xDE, 0xAD, 0xBE, 0xEF), longArrayOf(0xDE, 0xAD, 0xBE, 0xEF))
         assertEquals(value, objectMapper.readValue<BasicValue>(objectMapper.writeValueAsBytes(value)))
     }
 
     @Test
     fun `self-test with basic structure and little-endian`() {
-        val objectMapper = ObjectMapper(NbtFactory().enable(NbtFactory.Feature.LittleEndian)).registerKotlinModule()
+        val objectMapper = ObjectMapper(NbtFactory().enable(NbtFactory.Feature.LittleEndian)).registerKotlinModule().addHandler(ByteDeserializationProblemHandler)
         val value = BasicValue(Byte.MAX_VALUE, Short.MAX_VALUE, Int.MAX_VALUE, Long.MAX_VALUE, Float.MAX_VALUE, Double.MAX_VALUE, byteArrayOf(0xDE.toByte(), 0xAD.toByte(), 0xBE.toByte(), 0xEF.toByte()), "Hello World"/*, listOf(0xDE.toByte(), 0xAD.toByte(), 0xBE.toByte(), 0xEF.toByte())*/, mapOf("Hello" to "World"), intArrayOf(0xDE, 0xAD, 0xBE, 0xEF), longArrayOf(0xDE, 0xAD, 0xBE, 0xEF))
         assertEquals(value, objectMapper.readValue<BasicValue>(objectMapper.writeValueAsBytes(value)))
     }
 
     @Test
     fun `self-test with basic structure, little-endian and varint`() {
-        val objectMapper = ObjectMapper(NbtFactory().enable(NbtFactory.Feature.LittleEndian).enable(NbtFactory.Feature.VarInt)).registerKotlinModule()
+        val objectMapper = ObjectMapper(NbtFactory().enable(NbtFactory.Feature.LittleEndian).enable(NbtFactory.Feature.VarInt)).registerKotlinModule().addHandler(ByteDeserializationProblemHandler)
         val value = BasicValue(Byte.MAX_VALUE, Short.MAX_VALUE, Int.MAX_VALUE, Long.MAX_VALUE, Float.MAX_VALUE, Double.MAX_VALUE, byteArrayOf(0xDE.toByte(), 0xAD.toByte(), 0xBE.toByte(), 0xEF.toByte()), "Hello World"/*, listOf(0xDE.toByte(), 0xAD.toByte(), 0xBE.toByte(), 0xEF.toByte())*/, mapOf("Hello" to "World"), intArrayOf(0xDE, 0xAD, 0xBE, 0xEF), longArrayOf(0xDE, 0xAD, 0xBE, 0xEF))
         assertEquals(value, objectMapper.readValue<BasicValue>(objectMapper.writeValueAsBytes(value)))
     }
 
     @Test
     fun `self-test with basic structure and no-wrap`() {
-        val objectMapper = ObjectMapper(NbtFactory().enable(NbtFactory.Feature.NoWrap)).registerKotlinModule()
+        val objectMapper = ObjectMapper(NbtFactory().enable(NbtFactory.Feature.NoWrap)).registerKotlinModule().addHandler(ByteDeserializationProblemHandler)
         val value = BasicValue(Byte.MAX_VALUE, Short.MAX_VALUE, Int.MAX_VALUE, Long.MAX_VALUE, Float.MAX_VALUE, Double.MAX_VALUE, byteArrayOf(0xDE.toByte(), 0xAD.toByte(), 0xBE.toByte(), 0xEF.toByte()), "Hello World"/*, listOf(0xDE.toByte(), 0xAD.toByte(), 0xBE.toByte(), 0xEF.toByte())*/, mapOf("Hello" to "World"), intArrayOf(0xDE, 0xAD, 0xBE, 0xEF), longArrayOf(0xDE, 0xAD, 0xBE, 0xEF))
         assertEquals(value, objectMapper.readValue<BasicValue>(objectMapper.writeValueAsBytes(value)))
     }
 
     @Test
     fun `self-test with nested structure`() {
-        val objectMapper = ObjectMapper(NbtFactory()).registerKotlinModule()
+        val objectMapper = ObjectMapper(NbtFactory()).registerKotlinModule().addHandler(ByteDeserializationProblemHandler)
         val value = NestedValue("Hello", listOf(NestedValue("World", emptyList()), NestedValue("Hello2", listOf(NestedValue("World2", emptyList())))))
         assertEquals(value, objectMapper.readValue<NestedValue>(objectMapper.writeValueAsBytes(value)))
     }
 
     @Test
     fun `big test`() {
-        val objectMapper = ObjectMapper(NbtFactory()).registerKotlinModule()
+        val objectMapper = ObjectMapper(NbtFactory()).registerKotlinModule().addHandler(ByteDeserializationProblemHandler)
         objectMapper.readValue<Any?>(javaClass.getResource("/bigtest.nbt")!!)
     }
 
     @Test
     fun `test exploit`() {
-        val objectMapper = ObjectMapper(NbtFactory()).registerKotlinModule()
+        val objectMapper = ObjectMapper(NbtFactory()).registerKotlinModule().addHandler(ByteDeserializationProblemHandler)
 
         // 1. Run
         ByteArrayOutputStream().use {
@@ -98,10 +106,10 @@ class NbtFactoryTest {
 
     @Test
     fun `test deep equals`() {
-        val objectMapper = ObjectMapper(NbtFactory()).registerKotlinModule().registerModule(SimpleModule().addAbstractTypeMapping(Map::class.java, DeepEqualsLinkedHashMap::class.java))
+        val objectMapper = ObjectMapper(NbtFactory()).registerKotlinModule().registerModule(SimpleModule().addAbstractTypeMapping(Map::class.java, DeepEqualsLinkedHashMap::class.java)).addHandler(ByteDeserializationProblemHandler)
         val value = mapOf("test" to byteArrayOf(0x00, 0x01))
         val value2 = mapOf("test" to byteArrayOf(0x02, 0x03))
-        assertEquals(objectMapper.readValue<Any?>(objectMapper.writeValueAsBytes(value)).also { println(it?.javaClass?.name) }, objectMapper.readValue<Any?>(objectMapper.writeValueAsBytes(value)))
+        assertEquals(objectMapper.readValue<Any?>(objectMapper.writeValueAsBytes(value)), objectMapper.readValue<Any?>(objectMapper.writeValueAsBytes(value)))
         assertNotEquals(objectMapper.readValue<Any?>(objectMapper.writeValueAsBytes(value)), objectMapper.readValue<Any?>(objectMapper.writeValueAsBytes(value2)))
     }
 

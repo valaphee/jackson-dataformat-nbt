@@ -29,6 +29,7 @@ import com.valaphee.jackson.dataformat.nbt.io.LittleEndianDataInput
 import com.valaphee.jackson.dataformat.nbt.io.LittleEndianDataOutput
 import com.valaphee.jackson.dataformat.nbt.io.LittleEndianVarIntDataInput
 import com.valaphee.jackson.dataformat.nbt.io.LittleEndianVarIntDataOutput
+import com.valaphee.jackson.dataformat.nbt.util.ByteSerializer
 import java.io.ByteArrayInputStream
 import java.io.DataInput
 import java.io.DataInputStream
@@ -243,5 +244,11 @@ open class NbtFactory : JsonFactory {
         else
             if (Feature.VarInt.enabledIn(_formatFeatures)) throw UnsupportedOperationException("")
             else stream
+    }
+
+    companion object {
+        init {
+            ByteSerializer
+        }
     }
 }

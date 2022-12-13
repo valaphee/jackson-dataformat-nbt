@@ -1,9 +1,9 @@
 ## Overview
 
 [Jackson](../../FasterXML/jackson) (Java) data format module that supports reading and writing
-[NBT](NBT.txt)
-("Named Binary Tag") encoded data.
-Module extends standard Jackson streaming API (`JsonFactory`, `JsonParser`, `JsonGenerator`), and as such works seamlessly with all the higher level data abstractions (data binding, tree model, and pluggable extensions).
+[NBT](NBT.txt) ("Named Binary Tag") encoded data.
+Module extends standard Jackson streaming API (`JsonFactory`, `JsonParser`, `JsonGenerator`),
+and as such works seamlessly with all the higher level data abstractions (data binding, tree model, and pluggable extensions).
 
 # Dependency
 
@@ -28,7 +28,9 @@ implementation("com.valaphee:jackson-dataformat-nbt:1.1.8")
 Basic usage is by using `NbtFactory` in places where you would usually use `JsonFactory`
 
 ```java
-ObjectMapper mapper = new ObjectMapper(NbtFactory());
+ObjectMapper mapper = new ObjectMapper(new NbtFactory())
+        .registerModule(new SimpleModule().addAbstractTypeMapping(Map.class, DeepEqualsLinkedHashMap.class))
+        .addHandler(EmbeddedObjectDeserializationProblemHandler.INSTANCE);
 // and then read/write data as usual
 SomeType value = ...;
 byte[] nbtData = mapper.writeValueAsBytes(value);

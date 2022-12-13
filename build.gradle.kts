@@ -18,7 +18,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     id("com.palantir.git-version") version "0.12.3"
-    kotlin("jvm") version "1.6.10"
+    kotlin("jvm") version "1.7.22"
     `maven-publish`
     signing
 }
@@ -31,21 +31,12 @@ version = "${details.lastTag}.${details.commitDistance}"
 repositories { mavenCentral() }
 
 dependencies {
-    api("com.fasterxml.jackson.core:jackson-databind:2.13.1")
-    testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.13.1")
-    testImplementation("org.junit.jupiter:junit-jupiter:5.8.2")
+    api("com.fasterxml.jackson.core:jackson-databind:2.14.0")
+    testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.14.0")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.9.0")
 }
 
-tasks {
-    withType<JavaCompile> {
-        sourceCompatibility = "16"
-        targetCompatibility = "16"
-    }
-
-    withType<KotlinCompile>().configureEach { kotlinOptions { jvmTarget = "16" } }
-
-    withType<Test> { useJUnitPlatform() }
-}
+tasks { withType<Test> { useJUnitPlatform() } }
 
 java {
     withJavadocJar()
